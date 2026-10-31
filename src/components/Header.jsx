@@ -7,11 +7,27 @@ function Header() {
     <header className="header band">
       <div className="wrap header-inner">
         <Link className="brand" to="/" aria-label="Body Puzzle, início">
-          <img
-            className="brand-logo"
-            src="/Icone.png"
-            alt=""
-style={{ height: 48, width: 48, objectFit: "cover", transform: "scale(1.8)", display: "block" }}          />
+          <span
+            style={{
+              width: 44,
+              height: 44,
+              overflow: "hidden",
+              display: "block",
+              flex: "none",
+            }}
+          >
+            <img
+              src="/Icone.png"
+              alt=""
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                transform: "scale(1.8)",
+                display: "block",
+              }}
+            />
+          </span>
           <b>Body<br />Puzzle</b>
         </Link>
         <nav className="header-nav">
