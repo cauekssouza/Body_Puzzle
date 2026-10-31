@@ -24,11 +24,29 @@ function dataPorExtenso(texto) {
   return data.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })
 }
 
+// Deixa o número no formato (41) 99999-9999 enquanto a pessoa digita
+function formatarTelefone(valor) {
+  const d = valor.replace(/\D/g, "").slice(0, 11) // só números, no máximo 11
+  if (d.length === 0) return ""
+  if (d.length <= 2) return `(${d}`
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+}
+
 function Agendar() {
   const hoje = new Date()
   hoje.setHours(0, 0, 0, 0)
 
-  const [mes, setMes] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
+  // Abre no mês do próximo dia útil (ex.: em 31/10, sábado, já abre em novembro)
+  const proximoDiaUtil = new Date(hoje)
+  while (proximoDiaUtil.getDay() === 0 || proximoDiaUtil.getDay() === 6) {
+    proximoDiaUtil.setDate(proximoDiaUtil.getDate() + 1)
+  }
+
+  const [mes, setMes] = useState(
+    new Date(proximoDiaUtil.getFullYear(), proximoDiaUtil.getMonth(), 1)
+  )
   const [diaEscolhido, setDiaEscolhido] = useState(null)
   const [horaEscolhida, setHoraEscolhida] = useState(null)
   const [ocupados, setOcupados] = useState({}) // { "2026-11-03": ["08:00", ...] }
@@ -87,6 +105,15 @@ function Agendar() {
 
   async function enviar(evento) {
     evento.preventDefault()
+
+    // Exige DDD + número (pelo menos 10 dígitos)
+    const digitos = telefone.replace(/\D/g, "")
+    if (digitos.length < 10) {
+      setStatus("erro")
+      setMensagem("Confira o WhatsApp: digite o DDD e o número, como (41) 99999-9999.")
+      return
+    }
+
     setStatus("enviando")
     setMensagem("")
 
@@ -123,10 +150,12 @@ function Agendar() {
   const voltarDesabilitado = mes <= new Date(hoje.getFullYear(), hoje.getMonth(), 1)
   const ocupadosNoDia = (diaEscolhido && ocupados[diaEscolhido]) || []
 
-    if (status === "ok") {
+  // Tela de confirmação, depois que o agendamento foi salvo
+  if (status === "ok") {
     const textoWhats =
       `Olá! Acabei de agendar uma sessão na Body Puzzle.\n` +
       `Nome: ${nome}\n` +
+      `WhatsApp: ${telefone}\n` +
       `Dia: ${dataPorExtenso(diaEscolhido)}\n` +
       `Horário: ${horaEscolhida}`
     const linkWhats = `${contato.whatsappUrl}?text=${encodeURIComponent(textoWhats)}`
@@ -234,8 +263,9 @@ function Agendar() {
                     <input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
 
                     <label htmlFor="telefone">WhatsApp</label>
-                    <input id="telefone" type="tel" required placeholder="(41) 99999-9999"
-                      value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+                    <input id="telefone" type="tel" inputMode="numeric" required
+                      placeholder="(41) 99999-9999" value={telefone}
+                      onChange={(e) => setTelefone(formatarTelefone(e.target.value))} />
 
                     <button className="btn primary" type="submit" disabled={status === "enviando"}>
                       {status === "enviando" ? "Salvando..." : `Confirmar às ${horaEscolhida}`}
