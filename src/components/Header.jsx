@@ -7,7 +7,12 @@ function Header() {
     <header className="header band">
       <div className="wrap header-inner">
         <Link className="brand" to="/" aria-label="Body Puzzle, início">
-          <img className="brand-logo" src="/Icone.png" alt="" />
+          <img
+            className="brand-logo"
+            src="/Icone.png"
+            alt=""
+            style={{ height: 40, width: "auto", display: "block" }}
+          />
           <b>Body<br />Puzzle</b>
         </Link>
         <nav className="header-nav">
