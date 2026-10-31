@@ -11,8 +11,7 @@ function Header() {
             className="brand-logo"
             src="/Icone.png"
             alt=""
-            style={{ height: 40, width: "auto", display: "block" }}
-          />
+style={{ height: 48, width: 48, objectFit: "cover", transform: "scale(1.8)", display: "block" }}          />
           <b>Body<br />Puzzle</b>
         </Link>
         <nav className="header-nav">
