@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom"
-import Logo from "./Logo"
 import { menu } from "../data/contato"
 import "./Header.css"
 
@@ -8,7 +7,7 @@ function Header() {
     <header className="header band">
       <div className="wrap header-inner">
         <Link className="brand" to="/" aria-label="Body Puzzle, início">
-          <Logo size={36} />
+          <img className="brand-logo" src="/Icone.png" alt="" />
           <b>Body<br />Puzzle</b>
         </Link>
         <nav className="header-nav">
