@@ -1,0 +1,99 @@
+:root {
+  --bg: #ffffff;
+  --bg-2: #f2f4fb;
+  --ink: #14162b;
+  --ink-2: #4a4e69;
+  --line: #dfe2f0;
+  --card: #ffffff;
+  --on-accent: #ffffff;
+
+  --blue: #4459c0;
+  --teal: #22a9a5;
+  --orange: #ff7a00;
+  --red: #e5002b;
+  --yellow: #e8a800;
+  --purple: #6b12b8;
+
+  --display: "Archivo", "Arial Narrow", Impact, sans-serif;
+  --body: "Montserrat", system-ui, sans-serif;
+  --wrap: 1120px;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+h1, h2, h3 {
+  font-family: var(--display);
+  font-stretch: 72%;
+  font-weight: 850;
+  line-height: 1;
+  text-transform: uppercase;
+  text-wrap: balance;
+  margin: 0;
+}
+
+h2 { font-size: clamp(2.2rem, 5.5vw, 3.6rem); }
+h3 { font-size: 1.35rem; font-stretch: 85%; font-weight: 800; }
+p  { margin: 0; }
+a  { color: inherit; }
+
+/* Faixa de seção com margem lateral */
+.band { padding-left: 16px; padding-right: 16px; }
+
+/* Coluna central */
+.wrap { max-width: var(--wrap); margin: 0 auto; }
+
+/* Fundo alternado */
+.tint { background: var(--bg-2); }
+
+section { padding-block: clamp(64px, 9vw, 112px); }
+
+/* Título pequeno acima dos h2 */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+.eyebrow::before {
+  content: "";
+  width: 22px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--teal), var(--orange), var(--red));
+}
+
+.lede { font-size: 1.1rem; color: var(--ink-2); max-width: 62ch; }
+
+.head { display: grid; gap: 1rem; margin-bottom: clamp(32px, 5vw, 56px); }
+
+/* Botões */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.25rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-decoration: none;
+  border: 2px solid transparent;
+  transition: transform 0.15s;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn.primary { background: var(--teal); color: var(--on-accent); }
+.btn.ghost { border-color: var(--line); color: var(--ink); }
