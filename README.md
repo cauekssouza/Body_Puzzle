@@ -4,7 +4,7 @@ Site da **Body Puzzle**, serviço de treinamento físico individualizado para jo
 
 O site apresenta o serviço e permite que as famílias **agendem uma sessão** escolhendo dia e horário em um calendário. Os agendamentos ficam salvos em um banco de dados no Supabase.
 
-🔗 **Site no ar:** 
+🔗 **Site no ar:** https://body-puzzle.vercel.app
 
 ---
 
