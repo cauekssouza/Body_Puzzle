@@ -325,3 +325,6 @@
 @media (max-width: 520px) {
   .features, .caps { grid-template-columns: 1fr; }
 }
+
+.footer-dev { color: var(--teal); font-weight: 600; text-decoration: none; }
+.footer-dev:hover { text-decoration: underline; }

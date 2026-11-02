@@ -11,6 +11,7 @@ import Contato from './components/Contato'
 import Footer from './components/Footer'
 import Agendar from './pages/Agendar'
 import './components/Sections.css'
+import Desenvolvedor from './pages/Desenvolvedor'
 
 // Página inicial: todas as seções do site
 function Home() {
@@ -35,6 +36,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/agendar" element={<Agendar />} />
+        <Route path="/desenvolvedor" element={<Desenvolvedor />} />
       </Routes>
       <Footer />
     </>
