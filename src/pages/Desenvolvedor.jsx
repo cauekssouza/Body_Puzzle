@@ -20,6 +20,12 @@ const competencias = [
   "Styled Components", "AWS", "Git",
 ]
 
+// Certificações: para adicionar uma, copie uma linha e troque os dados.
+// Se não tiver instituição ou data, deixe as aspas vazias: ""
+const certificacoes = [
+  { nome: "Introdução ao Go", instituicao: "", data: "" },
+]
+
 function Desenvolvedor() {
   const [copiado, setCopiado] = useState(false)
 
@@ -143,9 +149,15 @@ function Desenvolvedor() {
               <li><b>Espanhol</b> · básico</li>
             </ul>
 
-            <h2 className="dev-sub">Certificação</h2>
+            <h2 className="dev-sub">Certificações</h2>
             <ul className="dev-lista">
-              <li>Introdução ao Go</li>
+              {certificacoes.map((c) => (
+                <li key={c.nome}>
+                  <b>{c.nome}</b>
+                  {c.instituicao && ` · ${c.instituicao}`}
+                  {c.data && ` · ${c.data}`}
+                </li>
+              ))}
             </ul>
           </div>
         </div>
