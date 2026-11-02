@@ -103,6 +103,38 @@ function Contador({ ate }) {
   return <strong ref={ref}>{valor}</strong>
 }
 
+// Serviços oferecidos
+const servicos = [
+  {
+    titulo: "Sites pessoais",
+    texto: "Portfólio, currículo online ou página para o seu trabalho como profissional autônomo.",
+    itens: ["Página com a sua cara", "Links para redes e contato", "Funciona no celular"],
+    cor: "var(--teal)",
+  },
+  {
+    titulo: "Sites para empresas",
+    texto: "Site institucional para apresentar o seu negócio, os serviços e a equipe, como este da Body Puzzle.",
+    itens: ["Apresentação do negócio", "Botão direto para o WhatsApp", "Endereço próprio na internet"],
+    cor: "var(--blue)",
+  },
+  {
+    titulo: "Sistemas sob medida",
+    texto: "Agendamento online, formulários e cadastros que salvam tudo num banco de dados.",
+    itens: ["Agenda com horários livres", "Dados salvos com segurança", "Painel para ver os pedidos"],
+    cor: "var(--orange)",
+  },
+]
+
+const etapasServico = [
+  { titulo: "Conversa", texto: "Entendo o que você precisa e o que o site deve fazer." },
+  { titulo: "Proposta", texto: "Mostro o escopo, o prazo e o valor antes de começar." },
+  { titulo: "Construção", texto: "Desenvolvo e mostro o andamento para você ajustar." },
+  { titulo: "No ar", texto: "Publico o site e ensino como acompanhar." },
+]
+
+const MENSAGEM_ORCAMENTO = "Olá, Cauê! Vi a página do site da Body Puzzle e quero um orçamento de site."
+const WHATSAPP_ORCAMENTO = `${WHATSAPP_URL}?text=${encodeURIComponent(MENSAGEM_ORCAMENTO)}`
+
 // Faz o bloco aparecer suavemente quando entra na tela
 function Revelar({ children, className = "", atraso = 0 }) {
   const ref = useRef(null)
@@ -181,6 +213,10 @@ function Desenvolvedor() {
               Engenheiro de Software em formação na PUCPR, desenvolvendo com React, Node.js e TypeScript.
             </p>
             <p className="dev-local entrar" style={{ "--d": "320ms" }}>📍 Curitiba, Paraná</p>
+            <a className="dev-disponivel entrar" style={{ "--d": "360ms" }} href="#servicos">
+              <span className="dev-pulso" aria-hidden="true" />
+              Crio sites pessoais e para empresas
+            </a>
 
             <div className="dev-contatos entrar" style={{ "--d": "400ms" }}>
               <div className="dev-contato">
@@ -245,6 +281,60 @@ function Desenvolvedor() {
               </Revelar>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Serviços */}
+      <section className="dev-secao dev-servicos band" id="servicos">
+        <div className="wrap">
+          <Revelar className="dev-cabeca">
+            <span className="eyebrow">Serviços</span>
+            <h2>Seu site, do jeito que você precisa</h2>
+            <p className="lede">
+              Faço sites para pessoas e para empresas: rápidos, bonitos no celular e fáceis de
+              atualizar. Se você gostou deste site, posso fazer um para você também.
+            </p>
+          </Revelar>
+
+          <div className="dev-servicos-grade">
+            {servicos.map((sv, i) => (
+              <Revelar key={sv.titulo} atraso={i * 120}>
+                <article className="dev-servico" style={{ "--cor": sv.cor }}>
+                  <i />
+                  <h3>{sv.titulo}</h3>
+                  <p>{sv.texto}</p>
+                  <ul>
+                    {sv.itens.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                </article>
+              </Revelar>
+            ))}
+          </div>
+
+          <Revelar className="dev-processo" atraso={100}>
+            <h3>Como funciona</h3>
+            <ol>
+              {etapasServico.map((e, i) => (
+                <li key={e.titulo}>
+                  <b>{i + 1}</b>
+                  <div>
+                    <strong>{e.titulo}</strong>
+                    <span>{e.texto}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </Revelar>
+
+          <Revelar className="dev-orcamento" atraso={150}>
+            <div>
+              <strong>Quer um site para você ou para sua empresa?</strong>
+              <span>Me chame no WhatsApp e conte o que precisa. O orçamento é sem compromisso.</span>
+            </div>
+            <a className="btn primary" href={WHATSAPP_ORCAMENTO} target="_blank" rel="noopener noreferrer">
+              Pedir orçamento
+            </a>
+          </Revelar>
         </div>
       </section>
 
@@ -388,14 +478,14 @@ function Desenvolvedor() {
       {/* Chamada final */}
       <section className="dev-final band">
         <Revelar className="wrap dev-final-inner">
-          <h2>Vamos conversar?</h2>
-          <p>Estou aberto a oportunidades e novos projetos.</p>
+          <h2>Vamos criar o seu site?</h2>
+          <p>Faço sites pessoais e para empresas, e estou aberto a oportunidades como desenvolvedor.</p>
           <div className="cta-row">
             <a className="btn dev-btn-claro" href={LINKEDIN} target="_blank" rel="noopener noreferrer">
               Falar no LinkedIn
             </a>
-            <a className="btn dev-btn-borda" href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-              WhatsApp
+            <a className="btn dev-btn-borda" href={WHATSAPP_ORCAMENTO} target="_blank" rel="noopener noreferrer">
+              Pedir orçamento no WhatsApp
             </a>
           </div>
         </Revelar>
