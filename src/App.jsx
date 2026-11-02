@@ -10,6 +10,7 @@ import QuemSomos from './components/QuemSomos'
 import Contato from './components/Contato'
 import Footer from './components/Footer'
 import Agendar from './pages/Agendar'
+import './components/Sections.css'
 import Desenvolvedor from './pages/Desenvolvedor'
 import CadastroAluno from './pages/CadastroAluno' // <-- Importamos a nova página aqui
 import './components/Sections.css'
