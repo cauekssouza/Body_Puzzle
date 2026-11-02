@@ -36,7 +36,7 @@ function Desenvolvedor() {
       <div className="wrap">
         {/* Apresentação */}
         <div className="dev-hero">
-          <img className="dev-foto" src="/caue.jpg" alt="Foto de Cauê Souza" />
+          <img className="dev-foto" src="/Caue.jpeg" alt="Foto de Cauê Souza" />
           <div className="dev-intro">
             <span className="eyebrow">Desenvolvido por</span>
             <h1>Cauê Souza</h1>
