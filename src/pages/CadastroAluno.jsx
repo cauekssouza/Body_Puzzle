@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase'; // Importa a configuração que você fez
+import { supabase } from '../lib/superbase'; // Importa a configuração que você fez
 
 export default function CadastroAluno() {
   const [nome, setNome] = useState('');
