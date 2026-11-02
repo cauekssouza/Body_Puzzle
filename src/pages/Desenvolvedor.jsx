@@ -29,11 +29,79 @@ const competencias = [
 ]
 const coresTags = ["var(--blue)", "var(--teal)", "var(--yellow)", "var(--orange)", "var(--red)", "var(--purple)"]
 
-// Certificações: para adicionar uma, copie uma linha e troque os dados.
-// Se não tiver instituição ou data, deixe as aspas vazias: ""
+// Certificados do LinkedIn, do mais recente para o mais antigo.
+// Para adicionar um, copie uma linha e troque os dados.
+// area: "Front-end", "Back-end", "Mobile", "Fundamentos" ou "Outros"
 const certificacoes = [
-  { nome: "Introdução ao Go", instituicao: "", data: "" },
+  { nome: "Minicurso de Java", instituicao: "Rocketseat", data: "nov. 2026", area: "Back-end" },
+  { nome: "Introdução ao Go", instituicao: "Rocketseat", data: "out. 2026", area: "Back-end" },
+  { nome: "React Native", instituicao: "Alura", data: "jan. 2026", area: "Mobile" },
+  { nome: "Lógica de Programação", instituicao: "Trybe", data: "dez. 2025", area: "Fundamentos" },
+  { nome: "API Development Essentials: Node.js, Express e PostgreSQL", instituicao: "Udemy", data: "set. 2025", area: "Back-end" },
+  { nome: "jQuery Course for Beginners", instituicao: "Udemy", data: "set. 2025", area: "Front-end" },
+  { nome: "PostgreSQL", instituicao: "Alura", data: "jul. 2025", area: "Back-end" },
+  { nome: "Spring Boot 3: desenvolva uma API Rest em Java", instituicao: "Alura", data: "jun. 2025", area: "Back-end" },
+  { nome: "React: desenvolvendo com JavaScript", instituicao: "Alura", data: "mai. 2025", area: "Front-end" },
+  { nome: "Learn C#", instituicao: "Codecademy", data: "mai. 2025", area: "Back-end" },
+  { nome: "Learn TypeScript", instituicao: "Codecademy", data: "abr. 2025", area: "Front-end" },
+  { nome: "Trilha de Arquiteto de Software", instituicao: "PUCPR", data: "fev. 2025", area: "Fundamentos" },
+  { nome: "Desenvolvendo Aplicações Mobile com Android Studio", instituicao: "Fundação Bradesco", data: "fev. 2025", area: "Mobile" },
+  { nome: "Trilha Desenvolvedor Web", instituicao: "PUCPR", data: "dez. 2024", area: "Front-end" },
+  { nome: "Trilha Desenvolvedor de Sistemas Computacionais", instituicao: "PUCPR", data: "dez. 2024", area: "Back-end" },
+  { nome: "Representante de Turma", instituicao: "PUCPR", data: "nov. 2024", area: "Outros" },
+  { nome: "Ciência da Computação de Harvard no Brasil", instituicao: "Fundação Estudar", data: "jul. 2024", area: "Fundamentos" },
+  { nome: "Excel do Básico ao Avançado", instituicao: "Veduca", data: "jul. 2024", area: "Outros" },
+  { nome: "Curso de JavaScript", instituicao: "Curso em Vídeo", data: "jul. 2023", area: "Front-end" },
+  { nome: "Python Mundo 3", instituicao: "Curso em Vídeo", data: "jun. 2023", area: "Fundamentos" },
+  { nome: "Python Mundo 2", instituicao: "Curso em Vídeo", data: "jun. 2023", area: "Fundamentos" },
+  { nome: "Python Mundo 1", instituicao: "Curso em Vídeo", data: "mai. 2023", area: "Fundamentos" },
 ]
+
+const AREAS = ["Todos", "Front-end", "Back-end", "Mobile", "Fundamentos", "Outros"]
+const corDaArea = {
+  "Front-end": "var(--teal)",
+  "Back-end": "var(--blue)",
+  "Mobile": "var(--orange)",
+  "Fundamentos": "var(--purple)",
+  "Outros": "var(--yellow)",
+}
+const instituicoes = [...new Set(certificacoes.map((c) => c.instituicao))]
+
+// Iniciais da instituição para o selo do cartão (ex.: "Curso em Vídeo" → "CV")
+function iniciais(nome) {
+  return nome.split(" ").filter((p) => p.length > 2 || p === nome).map((p) => p[0]).join("").slice(0, 2).toUpperCase()
+}
+
+// Número que conta de 0 até o valor quando aparece na tela
+function Contador({ ate }) {
+  const ref = useRef(null)
+  const [valor, setValor] = useState(0)
+
+  useEffect(() => {
+    const el = ref.current
+    const reduzir = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    if (!el || reduzir || !("IntersectionObserver" in window)) {
+      setValor(ate)
+      return
+    }
+    let quadro
+    const obs = new IntersectionObserver(([entrada]) => {
+      if (!entrada.isIntersecting) return
+      obs.disconnect()
+      const inicio = performance.now()
+      const passo = (agora) => {
+        const t = Math.min((agora - inicio) / 1200, 1)
+        setValor(Math.round(ate * (1 - Math.pow(1 - t, 3))))
+        if (t < 1) quadro = requestAnimationFrame(passo)
+      }
+      quadro = requestAnimationFrame(passo)
+    })
+    obs.observe(el)
+    return () => { obs.disconnect(); cancelAnimationFrame(quadro) }
+  }, [ate])
+
+  return <strong ref={ref}>{valor}</strong>
+}
 
 // Faz o bloco aparecer suavemente quando entra na tela
 function Revelar({ children, className = "", atraso = 0 }) {
@@ -72,6 +140,8 @@ function Revelar({ children, className = "", atraso = 0 }) {
 
 function Desenvolvedor() {
   const [copiado, setCopiado] = useState(false)
+  const [area, setArea] = useState("Todos")
+  const certsFiltrados = area === "Todos" ? certificacoes : certificacoes.filter((c) => c.area === area)
 
   async function copiarEmail() {
     try {
@@ -249,20 +319,68 @@ function Desenvolvedor() {
                 <div className="dev-barra"><i style={{ "--nivel": "30%" }} /></div>
               </div>
             </Revelar>
+          </div>
+        </div>
+      </section>
 
-            <Revelar className="dev-card" atraso={120}>
-              <h3>Certificações</h3>
-              <ul className="dev-certs">
-                {certificacoes.map((c) => (
-                  <li key={c.nome}>
-                    <b>{c.nome}</b>
-                    {(c.instituicao || c.data) && (
-                      <span>{[c.instituicao, c.data].filter(Boolean).join(" · ")}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </Revelar>
+      {/* Certificados */}
+      <section className="dev-secao dev-tinta band" id="certificados">
+        <div className="wrap">
+          <Revelar className="dev-cabeca">
+            <span className="eyebrow">Aprendizado contínuo</span>
+            <h2>Certificados</h2>
+          </Revelar>
+
+          <Revelar className="dev-cert-resumo" atraso={100}>
+            <div><Contador ate={certificacoes.length} /><span>certificados</span></div>
+            <div><Contador ate={instituicoes.length} /><span>instituições</span></div>
+            <div><Contador ate={2023} /><span>estudando desde</span></div>
+          </Revelar>
+        </div>
+
+        {/* Faixa rolando com as instituições */}
+        <div className="dev-faixa" aria-label={`Instituições: ${instituicoes.join(", ")}`}>
+          <div className="dev-faixa-trilho">
+            {[...instituicoes, ...instituicoes].map((nome, i) => (
+              <span key={`${nome}-${i}`} aria-hidden={i >= instituicoes.length}>{nome}</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="wrap">
+          <div className="dev-filtros" role="group" aria-label="Filtrar certificados por área">
+            {AREAS.map((a) => {
+              const total = a === "Todos" ? certificacoes.length : certificacoes.filter((c) => c.area === a).length
+              return (
+                <button
+                  key={a}
+                  type="button"
+                  className={a === area ? "ativo" : ""}
+                  style={{ "--cor": corDaArea[a] || "var(--ink)" }}
+                  aria-pressed={a === area}
+                  onClick={() => setArea(a)}
+                >
+                  {a} <small>{total}</small>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="dev-certs-grade">
+            {certsFiltrados.map((c, i) => (
+              <article
+                key={`${area}-${c.nome}`}
+                className="dev-cert"
+                style={{ "--cor": corDaArea[c.area], "--i": i }}
+              >
+                <div className="dev-cert-topo">
+                  <span className="dev-cert-selo">{iniciais(c.instituicao)}</span>
+                  <span className="dev-cert-area">{c.area}</span>
+                </div>
+                <h3>{c.nome}</h3>
+                <p>{c.instituicao} · {c.data}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>
