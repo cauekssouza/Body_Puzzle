@@ -10,12 +10,12 @@ import QuemSomos from './components/QuemSomos'
 import Contato from './components/Contato'
 import Footer from './components/Footer'
 import Agendar from './pages/Agendar'
-import './components/Sections.css'
 import Desenvolvedor from './pages/Desenvolvedor'
-import CadastroAluno from './pages/CadastroAluno' // <-- Importamos a nova página aqui
+import CadastroAluno from './pages/CadastroAluno'
+import ListaAlunos from './pages/ListaAlunos' 
 import './components/Sections.css'
 
-// Página inicial: todas as seções do site
+
 function Home() {
   return (
     <main>
@@ -39,7 +39,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/agendar" element={<Agendar />} />
         <Route path="/desenvolvedor" element={<Desenvolvedor />} />
-        <Route path="/cadastro" element={<CadastroAluno />} /> {}
+        <Route path="/cadastro" element={<CadastroAluno />} />
+        <Route path="/alunos" element={<ListaAlunos />} /> {/* <-- Nova rota adicionada aqui */}
       </Routes>
       <Footer />
     </>
