@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { supabase } from '../lib/superbase'; // Importa a configuração que você fez
+import { supabase } from '../lib/superbase';
+import './CadastroAluno.css';
 
 export default function CadastroAluno() {
   const [nome, setNome] = useState('');
@@ -8,44 +9,47 @@ export default function CadastroAluno() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    // Aqui usamos o supabase para inserir os dados na tabela que você criou
     const { data, error } = await supabase
       .from('alunos')
-      .insert([
-        { nome: nome, telefone: telefone }
-      ])
+      .insert([{ nome: nome, telefone: telefone }])
       .select();
 
     if (error) {
-      alert('Erro ao salvar aluno: ' + error.message);
+      window.alert('Erro ao guardar aluno: ' + error.message);
       return;
     }
 
-    alert('Aluno cadastrado com sucesso!');
+    window.alert('Aluno registado com sucesso!');
     setNome('');
     setTelefone('');
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '300px' }}>
-      <h2>Novo Aluno</h2>
+    <div className="cadastro-container">
+      <h2 className="cadastro-title">Novo Aluno</h2>
       
-      <input 
-        type="text" 
-        placeholder="Nome completo" 
-        value={nome} 
-        onChange={(e) => setNome(e.target.value)} 
-        required 
-      />
-      
-      <input 
-        type="text" 
-        placeholder="Telefone" 
-        value={telefone} 
-        onChange={(e) => setTelefone(e.target.value)} 
-      />
-      
-      <button type="submit">Cadastrar Aluno</button>
-    </form>
+      <form className="cadastro-form" onSubmit={handleSubmit}>
+        <input 
+          className="cadastro-input"
+          type="text" 
+          placeholder="Nome completo" 
+          value={nome} 
+          onChange={(e) => setNome(e.target.value)} 
+          required 
+        />
+        
+        <input 
+          className="cadastro-input"
+          type="text" 
+          placeholder="Telefone" 
+          value={telefone} 
+          onChange={(e) => setTelefone(e.target.value)} 
+        />
+        
+        <button className="cadastro-btn" type="submit">
+          Registar Aluno
+        </button>
+      </form>
+    </div>
   );
 }
