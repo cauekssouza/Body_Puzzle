@@ -20,6 +20,8 @@ function Header() {
           ))}
           {/* O link para a página de cadastro foi adicionado aqui */}
           <Link to="/cadastro">Cadastrar Aluno</Link>
+          {/* Novo link para a lista de alunos */}
+          <Link to="/alunos">Ver Alunos</Link>
         </nav>
         <Link className="btn primary header-cta" to="/agendar">Agendar</Link>
       </div>
