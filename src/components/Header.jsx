@@ -18,6 +18,8 @@ function Header() {
           {menu.map((item) => (
             <a key={item.href} href={item.href}>{item.label}</a>
           ))}
+          {/* O link para a página de cadastro foi adicionado aqui */}
+          <Link to="/cadastro">Cadastrar Aluno</Link>
         </nav>
         <Link className="btn primary header-cta" to="/agendar">Agendar</Link>
       </div>
