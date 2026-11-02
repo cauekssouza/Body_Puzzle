@@ -4,6 +4,8 @@ import "./Desenvolvedor.css"
 const EMAIL = "cauekssouza@gmail.com"
 const LINKEDIN = "https://www.linkedin.com/in/cauekssouza"
 const GITHUB = "https://github.com/cauekssouza"
+const TELEFONE = "(41) 99221-0636"
+const WHATSAPP_URL = "https://wa.me/5541992210636"
 
 const tecnologiasSite = [
   { nome: "React + Vite", uso: "Interface e páginas do site" },
@@ -52,6 +54,13 @@ function Desenvolvedor() {
                 <button type="button" className="mini" onClick={copiarEmail}>
                   {copiado ? "Copiado" : "Copiar"}
                 </button>
+              </div>
+              <div className="dev-contato">
+                <small>WhatsApp</small>
+                <b>{TELEFONE}</b>
+                <a className="mini" href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
+                  Abrir
+                </a>
               </div>
               <div className="cta-row">
                 <a className="btn primary" href={LINKEDIN} target="_blank" rel="noopener noreferrer">
