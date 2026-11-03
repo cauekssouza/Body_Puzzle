@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { supabase } from '../lib/superbase';
-import { useNavigate } from 'react-router-dom';
-import './Anamnese.css'; // Reaproveitamos o estilo do formulário
+import { supabase } from '../database/db'; // Caminho correto para não quebrar a Vercel
+import { useNavigate, Link } from 'react-router-dom';
+import './Anamnese.css';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -40,6 +40,11 @@ export default function Login() {
         />
         <button className="anamnese-btn" type="submit">Entrar</button>
       </form>
+      <div style={{ marginTop: '20px', textAlign: 'center' }}>
+        <Link to="/registro-equipe" style={{ color: '#666', textDecoration: 'none', fontSize: '14px' }}>
+          Criar nova conta de profissional
+        </Link>
+      </div>
     </div>
   );
 }

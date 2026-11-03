@@ -20,6 +20,8 @@ import ListaAnamneses from './pages/ListaAnamneses'
 import Login from './pages/Login'
 import './components/Sections.css'
 
+import CadastroEquipe from './pages/CadastroEquipe'
+
 function Home() {
   return (
     <main>
@@ -61,6 +63,11 @@ function App() {
         <Route path="/alunos" element={sessao ? <ListaAlunos /> : <Navigate to="/login" />} />
         <Route path="/anamnese" element={sessao ? <Anamnese /> : <Navigate to="/login" />} />
         <Route path="/anamneses-lista" element={sessao ? <ListaAnamneses /> : <Navigate to="/login" />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/agendar" element={<Agendar />} />
+        <Route path="/desenvolvedor" element={<Desenvolvedor />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/registro-equipe" element={<CadastroEquipe />} /> {/* Nova Rota */}
       </Routes>
       <Footer />
     </>
