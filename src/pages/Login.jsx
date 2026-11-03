@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../database/db'; // Caminho correto para não quebrar a Vercel
+import { supabase } from '../lib/superbase'; // Caminho correto para não quebrar a Vercel
 import { useNavigate, Link } from 'react-router-dom';
 import './Anamnese.css';
 
