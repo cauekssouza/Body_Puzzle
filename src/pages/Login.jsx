@@ -8,13 +8,13 @@ export default function Login() {
   const [senha, setSenha] = useState('');
   const navigate = useNavigate();
 
-  async function handleLogin(e) {
+ async function handleLogin(e) {
     e.preventDefault();
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
     if (error) {
       window.alert('Erro no login: ' + error.message);
     } else {
-      navigate('/alunos');
+      navigate('/cadastro'); // <-- Altere esta linha
     }
   }
 

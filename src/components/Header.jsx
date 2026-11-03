@@ -59,6 +59,16 @@ function Header({ sessao }) {
               {/* Botões para quem ainda não entrou no site */}
               <Link to="/login" style={{ color: '#333', textDecoration: 'none', fontWeight: 'bold', fontSize: '14px' }}>Entrar</Link>
               <Link className="btn primary header-cta" to="/cadastro">Cadastrar-se</Link>
+
+              {/* Aparece APENAS para os Admins */}
+          {isAdmin && (
+            <>
+              <Link to="/cadastro">Cadastrar Aluno</Link>
+              <Link to="/alunos">Ver Alunos</Link>
+              <Link to="/anamnese">Anamnese</Link>
+              <Link to="/anamneses-lista">Ver Anamneses</Link>
+            </>
+          )}
             </>
           )}
         </div>
