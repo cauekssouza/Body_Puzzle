@@ -20,7 +20,7 @@ export default function Login() {
 
   return (
     <div className="anamnese-container">
-      <h2 className="anamnese-title">Acesso Restrito - Equipa</h2>
+      <h2 className="anamnese-title">Acesso Restrito - Equipe</h2>
       <form className="anamnese-form" onSubmit={handleLogin}>
         <input 
           type="email" 
