@@ -21,7 +21,6 @@ function Header() {
           <Link to="/cadastro">Cadastrar Aluno</Link>
           <Link to="/alunos">Ver Alunos</Link>
           <Link to="/anamnese">Anamnese</Link>
-
           <Link to="/anamneses-lista">Ver Anamneses</Link>
         </nav>
         <Link className="btn primary header-cta" to="/agendar">Agendar</Link>

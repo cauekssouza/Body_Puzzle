@@ -13,9 +13,9 @@ import Agendar from './pages/Agendar'
 import Desenvolvedor from './pages/Desenvolvedor'
 import CadastroAluno from './pages/CadastroAluno'
 import ListaAlunos from './pages/ListaAlunos' 
-import Anamnese from './pages/Anamnese' // <-- Importe a página aqui
-import './components/Sections.css'
+import Anamnese from './pages/Anamnese'
 import ListaAnamneses from './pages/ListaAnamneses'
+import './components/Sections.css'
 
 function Home() {
   return (
@@ -42,8 +42,8 @@ function App() {
         <Route path="/desenvolvedor" element={<Desenvolvedor />} />
         <Route path="/cadastro" element={<CadastroAluno />} />
         <Route path="/alunos" element={<ListaAlunos />} />
-        <Route path="/anamnese" element={<Anamnese />} /> {/* <-- Adicione a rota aqui */}
-        <Route path="/anamneses" element={<ListaAnamneses />} /> {/* <-- Adicione a rota aqui */}
+        <Route path="/anamnese" element={<Anamnese />} />
+        <Route path="/anamneses-lista" element={<ListaAnamneses />} />
       </Routes>
       <Footer />
     </>
