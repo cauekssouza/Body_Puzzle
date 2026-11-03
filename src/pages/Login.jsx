@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../database/db';
+import { supabase } from '../data/contato';
 import { useNavigate } from 'react-router-dom';
 import './Anamnese.css'; // Reaproveitamos o estilo do formulário
 
