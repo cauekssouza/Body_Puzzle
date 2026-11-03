@@ -1,4 +1,6 @@
-import { Routes, Route } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { supabase } from './database/db'
 import Header from './components/Header'
 import Hero from './components/Hero'
 import Diagnostico from './components/Diagnostico'
@@ -15,6 +17,7 @@ import CadastroAluno from './pages/CadastroAluno'
 import ListaAlunos from './pages/ListaAlunos' 
 import Anamnese from './pages/Anamnese'
 import ListaAnamneses from './pages/ListaAnamneses'
+import Login from './pages/Login'
 import './components/Sections.css'
 
 function Home() {
@@ -33,17 +36,31 @@ function Home() {
 }
 
 function App() {
+  const [sessao, setSessao] = useState(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSessao(session)
+    })
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setSessao(session)
+    })
+  }, [])
+
   return (
     <>
-      <Header />
+      <Header sessao={sessao} />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/agendar" element={<Agendar />} />
         <Route path="/desenvolvedor" element={<Desenvolvedor />} />
-        <Route path="/cadastro" element={<CadastroAluno />} />
-        <Route path="/alunos" element={<ListaAlunos />} />
-        <Route path="/anamnese" element={<Anamnese />} />
-        <Route path="/anamneses-lista" element={<ListaAnamneses />} />
+        <Route path="/login" element={<Login />} />
+        
+        {/* Rotas Protegidas */}
+        <Route path="/cadastro" element={sessao ? <CadastroAluno /> : <Navigate to="/login" />} />
+        <Route path="/alunos" element={sessao ? <ListaAlunos /> : <Navigate to="/login" />} />
+        <Route path="/anamnese" element={sessao ? <Anamnese /> : <Navigate to="/login" />} />
+        <Route path="/anamneses-lista" element={sessao ? <ListaAnamneses /> : <Navigate to="/login" />} />
       </Routes>
       <Footer />
     </>
