@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { supabase } from './data/contato'
+import { supabase } from './lib/superbase'
 import Header from './components/Header'
 import Hero from './components/Hero'
 import Diagnostico from './components/Diagnostico'
