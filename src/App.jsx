@@ -15,6 +15,7 @@ import CadastroAluno from './pages/CadastroAluno'
 import ListaAlunos from './pages/ListaAlunos' 
 import Anamnese from './pages/Anamnese' // <-- Importe a página aqui
 import './components/Sections.css'
+import ListaAnamneses from './pages/ListaAnamneses'
 
 function Home() {
   return (
@@ -42,6 +43,7 @@ function App() {
         <Route path="/cadastro" element={<CadastroAluno />} />
         <Route path="/alunos" element={<ListaAlunos />} />
         <Route path="/anamnese" element={<Anamnese />} /> {/* <-- Adicione a rota aqui */}
+        <Route path="/anamneses" element={<ListaAnamneses />} /> {/* <-- Adicione a rota aqui */}
       </Routes>
       <Footer />
     </>
