@@ -1,0 +1,51 @@
+.anamnese-container {
+  max-width: 600px;
+  margin: 60px auto;
+  padding: 30px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.anamnese-title {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #333333;
+  font-size: 24px;
+}
+
+.anamnese-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.anamnese-input, .anamnese-textarea {
+  padding: 14px;
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.anamnese-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.anamnese-input:focus, .anamnese-textarea:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.anamnese-btn {
+  padding: 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 10px;
+}

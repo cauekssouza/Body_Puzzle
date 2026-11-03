@@ -20,6 +20,9 @@ function Header() {
           ))}
           {/* O link para a página de cadastro foi adicionado aqui */}
           <Link to="/cadastro">Cadastrar Aluno</Link>
+          <Link to="/anamnese">Anamnese</Link><Link to="/alunos"
+          >
+          </Link>
           {/* Novo link para a lista de alunos */}
           <Link to="/alunos">Ver Alunos</Link>
         </nav>
