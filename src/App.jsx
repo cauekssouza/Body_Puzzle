@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { supabase } from './lib/superbase' // Caminho corrigido para o banco
+import { supabase } from './lib/superbase'
 import Header from './components/Header'
 import Hero from './components/Hero'
 import Diagnostico from './components/Diagnostico'
@@ -22,6 +22,7 @@ import CadastroEquipe from './pages/CadastroEquipe'
 import Dashboard from './pages/Dashboard'
 import PrescricaoTreino from './pages/PrescricaoTreino'
 import MeuTreino from './pages/MeuTreino'
+import RotaAdmin from './components/RotaAdmin'
 import './components/Sections.css'
 
 function Home() {
@@ -55,23 +56,22 @@ function App() {
     <>
       <Header sessao={sessao} />
       <Routes>
+        {/* Rotas Públicas */}
         <Route path="/" element={<Home />} />
         <Route path="/desenvolvedor" element={<Desenvolvedor />} />
-        
-        {/* Rotas Públicas */}
         <Route path="/cadastro" element={<CadastroAluno />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registro-equipe" element={<CadastroEquipe />} />
         
-        {/* Rotas Protegidas (Exigem Login) */}
-        <Route path="/agendar" element={sessao ? <Agendar /> : <Navigate to="/login" />} />
-        <Route path="/alunos" element={sessao ? <ListaAlunos /> : <Navigate to="/login" />} />
-        <Route path="/anamnese" element={sessao ? <Anamnese /> : <Navigate to="/login" />} />
-        <Route path="/anamneses-lista" element={sessao ? <ListaAnamneses /> : <Navigate to="/login" />} />
-        <Route path="/dashboard" element={sessao ? <Dashboard /> : <Navigate to="/login" />} />
-        <Route path="/prescrever-treino" element={sessao ? <PrescricaoTreino /> : <Navigate to="/login" />} />
+        {/* Rotas Protegidas Exclusivas para Administradores (Protegidas pelo RotaAdmin) */}
+        <Route path="/dashboard" element={<RotaAdmin><Dashboard /></RotaAdmin>} />
+        <Route path="/prescrever-treino" element={<RotaAdmin><PrescricaoTreino /></RotaAdmin>} />
+        <Route path="/alunos" element={<RotaAdmin><ListaAlunos /></RotaAdmin>} />
+        <Route path="/anamneses-lista" element={<RotaAdmin><ListaAnamneses /></RotaAdmin>} />
+        <Route path="/anamnese" element={<RotaAdmin><Anamnese /></RotaAdmin>} />
         
-        {/* Rota do Aluno para ver o seu treino (DENTRO de <Routes>) */}
+        {/* Rotas Protegidas para Alunos Comuns */}
+        <Route path="/agendar" element={sessao ? <Agendar /> : <Navigate to="/login" />} />
         <Route path="/meu-treino" element={sessao ? <MeuTreino /> : <Navigate to="/login" />} />
       </Routes>
       <Footer />
