@@ -10,14 +10,31 @@ function Header({ sessao }) {
 
   const emailAtual = sessao?.user?.email;
 
+  // Lista oficial de administradores
+  const emailsAdmin = [
+    'cauekssouza@gmail.com',
+    'bodypuzzle.treinamento@gmail.com',
+    'edususs@yahoo.com.br',
+    'andre.goncalves03@hotmail.com'
+  ];
+
   useEffect(() => {
     async function buscarPerfil() {
+      if (!emailAtual) {
+        setRole('aluno');
+        return;
+      }
+      
+      if (emailsAdmin.includes(emailAtual)) {
+        setRole('admin');
+        return;
+      }
+
       if (!sessao?.user?.id) {
         setRole('aluno');
         return;
       }
       
-      // Consulta a tabela de perfis para obter o papel exato do utilizador
       const { data } = await supabase
         .from('perfis')
         .select('role')
@@ -25,22 +42,16 @@ function Header({ sessao }) {
         .single();
 
       if (data) {
-        setRole(data.role); // 'admin' ou 'aluno'
+        setRole(data.role);
       } else {
-        // Fallback para contas principais de gestão por segurança
-        if (emailAtual === 'cauekssouza@gmail.com' || emailAtual === 'bodypuzzle.treinamento@gmail.com' || emailAtual === 'edususs@yahoo.com.br' || emailAtual === 'andre.goncalves03@hotmail.com') {
-          setRole('admin');
-        } else {
-          setRole('aluno');
-        }
+        setRole('aluno');
       }
     }
     buscarPerfil();
   }, [sessao, emailAtual]);
 
-  const isAdmin = role === 'admin';
+  const isAdmin = emailsAdmin.includes(emailAtual) || role === 'admin';
   const isViewer = emailAtual === 'bodypuzzle.treinamento@gmail.com';
-  const podeGerenciar = isAdmin;
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -51,42 +62,43 @@ function Header({ sessao }) {
     <header className="header band">
       <div className="wrap header-inner">
         <Link className="brand" to="/" aria-label="Body Puzzle, início">
-          <img src="/Icone.png" alt="" style={{ height: 40, width: "auto", display: "block", flex: "none" }} />
+          <img src="/Icone.png" alt="" style={{ height: 36, width: "auto", display: "block", flex: "none" }} />
           <b>Body<br />Puzzle</b>
         </Link>
+        
         <nav className="header-nav">
           {menu.map((item) => (
             <a key={item.href} href={item.href}>{item.label}</a>
           ))}
           
-          {/* Menus de gestão exclusivos para administradores */}
-          {podeGerenciar && (
-            <>
+          {/* Menu compacto e organizado para Administradores */}
+          {isAdmin && (
+            <div className="admin-menu-group">
+              <span className="admin-badge-label">⚙️ Gestão:</span>
               <Link to="/dashboard">Dashboard</Link>
-              <Link to="/anamneses-lista">Ver Anamneses</Link>
-              <Link to="/prescrever-treino">Prescrever Treino</Link>
-              <Link to="/cadastro">Cadastrar Aluno</Link>
-              <Link to="/alunos">Ver Alunos</Link>
-              <Link to="/anamnese">Nova Anamnese</Link>
-            </>
+              <Link to="/anamneses-lista">Anamneses</Link>
+              <Link to="/prescrever-treino">Prescrever</Link>
+              <Link to="/cadastro">Cadastrar</Link>
+              <Link to="/alunos">Alunos</Link>
+            </div>
           )}
           
-          {/* Menu exclusivo para Alunos verem o seu treino */}
-          {sessao && !podeGerenciar && (
+          {/* Menu exclusivo para Alunos */}
+          {sessao && !isAdmin && (
             <Link to="/meu-treino">Meu Treino</Link>
           )}
         </nav>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {sessao ? (
             <>
-              {!isViewer && !podeGerenciar && (
-                <Link className="btn primary" to="/agendar" style={{ padding: '0.6rem 1.2rem', textDecoration: 'none' }}>Agendar Treino</Link>
+              {!isViewer && !isAdmin && (
+                <Link className="btn primary" to="/agendar" style={{ padding: '0.5rem 1rem', fontSize: '13px', textDecoration: 'none' }}>Agendar</Link>
               )}
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#007bff' }}>
+              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#007bff' }}>
                 👤 {emailAtual ? emailAtual.split('@')[0] : ''}
               </span>
-              <button onClick={handleLogout} className="btn primary header-cta" style={{ backgroundColor: '#dc3545', border: 'none', cursor: 'pointer' }}>Sair</button>
+              <button onClick={handleLogout} className="btn primary header-cta" style={{ backgroundColor: '#dc3545', border: 'none', cursor: 'pointer', padding: '0.4rem 0.8rem', fontSize: '13px' }}>Sair</button>
             </>
           ) : (
             <>

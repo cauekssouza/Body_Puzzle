@@ -21,6 +21,7 @@
   gap: 0.75rem;
   text-decoration: none;
   color: var(--ink, #333);
+  flex-shrink: 0;
 }
 
 .brand b {
@@ -35,27 +36,67 @@
 .header-nav { 
   display: flex; 
   align-items: center;
-  gap: 1.1rem; 
+  gap: 1rem; 
   font-size: 0.85rem; 
   font-weight: 600; 
+  overflow-x: auto; /* Permite rolar suavemente caso ultrapasse o espaço em telas intermediárias */
+  scrollbar-width: none; /* Oculta a barra de scroll no Firefox */
+}
+
+.header-nav::-webkit-scrollbar {
+  display: none; /* Oculta a barra de scroll no Chrome/Safari */
 }
 
 .header-nav a { 
   text-decoration: none; 
   color: var(--ink-2, #666); 
   transition: color 0.2s ease;
+  white-space: nowrap;
 }
 
 .header-nav a:hover { 
   color: var(--ink, #000); 
 }
 
-.header-cta { 
-  padding: 0.6rem 1.2rem; 
-  font-size: 0.85rem; 
+/* Bloco compacto e elegante para a barra de Gestão dos 5 Admins */
+.admin-menu-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8f9fa;
+  padding: 4px 10px;
   border-radius: 6px;
+  border: 1px solid #e9ecef;
+  flex-shrink: 0;
 }
 
-@media (max-width: 1024px) {
+.admin-badge-label {
+  font-size: 11px;
+  font-weight: bold;
+  color: #495057;
+  white-space: nowrap;
+}
+
+.admin-menu-group a {
+  font-size: 12.5px !important;
+  color: #0056b3 !important;
+  font-weight: 600;
+}
+
+.header-cta { 
+  padding: 0.5rem 1rem; 
+  font-size: 0.85rem; 
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  /* Em ecrãs médios, esconde os links institucionais públicos para dar prioridade total à barra de gestão e navegação */
+  .header-nav > a:not(.admin-menu-group a) {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
   .header-nav { display: none; }
 }
