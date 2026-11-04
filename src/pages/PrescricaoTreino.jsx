@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/superbase';
-import { useNavigate } from 'react-router-dom';
 import './Anamnese.css';
 
 export default function PrescricaoTreino() {
@@ -11,22 +10,8 @@ export default function PrescricaoTreino() {
   const [titulo, setTitulo] = useState('');
   const [exercicios, setExercicios] = useState('');
   const [obsSensoriais, setObsSensoriais] = useState('');
-  const navigate = useNavigate();
 
-  // Trava de segurança: Apenas Cauê e a conta institucional podem entrar aqui
-  useEffect(() => {
-    async function verificarPermissao() {
-      const { data: { user } } = await supabase.auth.getUser();
-      const email = user?.email;
-      const temPermissao = email === 'cauekssouza@gmail.com' || email === 'bodypuzzle.treinamento@gmail.com';
-      
-      if (!temPermissao) {
-        window.alert('Acesso negado. Área restrita.');
-        navigate('/agendar');
-      }
-    }
-    verificarPermissao();
-  }, [navigate]);
+  // A segurança já é feita pelo RotaAdmin no App.jsx, por isso não precisamos de validar emails aqui.
 
   useEffect(() => {
     async function carregarAlunos() {
