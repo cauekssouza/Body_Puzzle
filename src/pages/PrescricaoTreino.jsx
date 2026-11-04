@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/superbase'; 
-import './Anamnese.css';
+import { supabase } from '../lib/superbase';
 
 export default function PrescricaoTreino() {
   const [alunos, setAlunos] = useState([]);
   const [alunoSelecionadoId, setAlunoSelecionadoId] = useState('');
   const [anamneseAluno, setAnamneseAluno] = useState(null);
   
-  // Dados do Treino
   const [titulo, setTitulo] = useState('');
-  
-  // Novo estado para a Biblioteca de Exercícios
   const [biblioteca, setBiblioteca] = useState([]);
   const [exercicioSelecionadoId, setExercicioSelecionadoId] = useState('');
   const [detalhesExercicio, setDetalhesExercicio] = useState(null);
@@ -19,51 +15,38 @@ export default function PrescricaoTreino() {
   const [repeticoes, setRepeticoes] = useState('');
   const [carga, setCarga] = useState('');
   
-  // Lista temporária de exercícios que estão a ser adicionados ao treino atual
   const [listaExerciciosTreino, setListaExerciciosTreino] = useState([]);
 
-  // 1. Carregar Alunos e Biblioteca de Exercícios ao abrir a página
   useEffect(() => {
     async function carregarDados() {
-      // Carrega alunos
       const { data: dadosAlunos } = await supabase.from('alunos').select('id, nome, user_id').order('nome');
       if (dadosAlunos) setAlunos(dadosAlunos);
 
-      // Carrega exercícios do Excel
       const { data: dadosExercicios } = await supabase.from('exercicios').select('*').order('padrao');
       if (dadosExercicios) setBiblioteca(dadosExercicios);
     }
     carregarDados();
   }, []);
 
-  // 2. Carregar Anamnese quando seleciona o aluno (Código Original Mantido)
   useEffect(() => {
     async function carregarAnamnese() {
       if (!alunoSelecionadoId) {
         setAnamneseAluno(null);
         return;
       }
-      const { data } = await supabase
-        .from('anamneses')
-        .select('*')
-        .eq('aluno_id', alunoSelecionadoId)
-        .single();
-      
+      const { data } = await supabase.from('anamneses').select('*').eq('aluno_id', alunoSelecionadoId).single();
       setAnamneseAluno(data || null);
     }
     carregarAnamnese();
   }, [alunoSelecionadoId]);
 
-  // 3. Atualizar painel de dicas quando o professor seleciona um exercício no dropdown
   function handleSelecaoExercicio(e) {
     const id = e.target.value;
     setExercicioSelecionadoId(id);
-    
     const exercicioCompleto = biblioteca.find(ex => ex.id === id);
     setDetalhesExercicio(exercicioCompleto || null);
   }
 
-  // 4. Adicionar exercício temporariamente à lista que vai aparecer no ecrã
   function handleAdicionarALista(e) {
     e.preventDefault();
     if (!exercicioSelecionadoId || !series || !repeticoes) {
@@ -71,19 +54,18 @@ export default function PrescricaoTreino() {
     }
 
     const novoExercicio = {
-      id_unico: Date.now(), // Apenas para gerir a lista no frontend
+      id_unico: Date.now(),
       nome: detalhesExercicio.nome,
       padrao: detalhesExercicio.padrao,
       equipamento: detalhesExercicio.equipamento,
       series,
       repeticoes,
-      carga,
+      carga: carga || 'Livre',
       pontos_atencao: detalhesExercicio.pontos_atencao
     };
 
     setListaExerciciosTreino([...listaExerciciosTreino, novoExercicio]);
     
-    // Limpar campos para o próximo exercício
     setExercicioSelecionadoId('');
     setDetalhesExercicio(null);
     setSeries('');
@@ -91,7 +73,10 @@ export default function PrescricaoTreino() {
     setCarga('');
   }
 
-  // 5. Salvar o treino completo na Base de Dados
+  function removerDaLista(idParaRemover) {
+    setListaExerciciosTreino(listaExerciciosTreino.filter(ex => ex.id_unico !== idParaRemover));
+  }
+
   async function handleSalvarTreinoFinal(e) {
     e.preventDefault();
     if (!alunoSelecionadoId) return window.alert('Selecione um aluno!');
@@ -99,17 +84,16 @@ export default function PrescricaoTreino() {
 
     const alunoObj = alunos.find(a => a.id === alunoSelecionadoId);
 
-    // Formata a lista para guardar na coluna "exercicios" como texto (para não quebrar a tua tabela de treinos atual)
     const textoTreino = listaExerciciosTreino.map(ex => 
-      `${ex.nome} (${ex.equipamento}) - ${ex.series}x${ex.repeticoes} | Carga: ${ex.carga || 'Livre'} | Dica: ${ex.pontos_atencao}`
+      `• ${ex.nome} (${ex.equipamento})\n  ${ex.series}x${ex.repeticoes} | Carga: ${ex.carga}kg\n  💡 Dica: ${ex.pontos_atencao}`
     ).join('\n\n');
 
     const { error } = await supabase.from('treinos').insert([{
       aluno_id: alunoSelecionadoId,
       user_id: alunoObj?.user_id,
       titulo,
-      exercicios: textoTreino, // Guarda o texto formatado bonito
-      observacoes_sensoriais: 'Criado pela Biblioteca Body Puzzle' // Ou podes adicionar um input extra
+      exercicios: textoTreino,
+      observacoes_sensoriais: 'Criado pela Biblioteca Body Puzzle'
     }]);
 
     if (error) {
@@ -118,100 +102,110 @@ export default function PrescricaoTreino() {
       window.alert('Treino prescrito com sucesso!');
       setTitulo('');
       setAlunoSelecionadoId('');
-      setListaExerciciosTreino([]); // Limpa a lista
+      setListaExerciciosTreino([]);
     }
   }
 
+  // --- ESTILOS MODERNOS (Inline para garantir que funciona perfeitamente) ---
+  const styles = {
+    container: { maxWidth: '700px', margin: '40px auto', padding: '30px', background: '#ffffff', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.08)', fontFamily: 'system-ui, -apple-system, sans-serif' },
+    title: { textAlign: 'center', color: '#1e293b', fontSize: '24px', fontWeight: '800', marginBottom: '25px', textTransform: 'uppercase', letterSpacing: '1px' },
+    input: { width: '100%', padding: '14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', color: '#334155', boxSizing: 'border-box', backgroundColor: '#f8fafc', marginBottom: '15px', outline: 'none' },
+    sectionBox: { background: '#f1f5f9', padding: '25px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '20px' },
+    grid3: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '15px', marginBottom: '15px' },
+    btnPrimary: { width: '100%', padding: '15px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s', textTransform: 'uppercase' },
+    btnSecondary: { padding: '12px 20px', background: '#64748b', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' },
+    btnRemove: { background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' },
+    cardExercicio: { background: '#ffffff', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }
+  };
+
   return (
-    <div className="anamnese-container" style={{ maxWidth: '800px' }}>
-      <h2 className="anamnese-title">Prescrever Treino Personalizado</h2>
+    <div style={styles.container}>
+      <h2 style={styles.title}>Prescrever Treino</h2>
       
-      {/* 1. SELEÇÃO DO ALUNO */}
-      <div className="anamnese-form" style={{ marginBottom: '20px' }}>
-        <select 
-          className="anamnese-input" 
-          value={alunoSelecionadoId} 
-          onChange={(e) => setAlunoSelecionadoId(e.target.value)} 
-          required
-        >
-          <option value="">Selecione o Aluno...</option>
-          {alunos.map((aluno) => (
-            <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>
-          ))}
-        </select>
+      {/* 1. DADOS DO TREINO */}
+      <select style={styles.input} value={alunoSelecionadoId} onChange={(e) => setAlunoSelecionadoId(e.target.value)} required>
+        <option value="">👤 Selecione o Aluno...</option>
+        {alunos.map((aluno) => <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>)}
+      </select>
 
-        {anamneseAluno && (
-          <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #007bff', textAlign: 'left', fontSize: '14px', marginTop: '10px' }}>
-            <h4 style={{ margin: '0 0 8px 0', color: '#333' }}>📋 Resumo da Anamnese:</h4>
-            <p style={{ margin: '4px 0' }}><strong>Condições:</strong> {anamneseAluno.condicoes_medicas || 'Não informado'}</p>
-            <p style={{ margin: '4px 0' }}><strong>Gatilhos Sensoriais:</strong> {anamneseAluno.gatilhos_sensoriais || 'Nenhum'}</p>
-            <p style={{ margin: '4px 0' }}><strong>Medicamentos:</strong> {anamneseAluno.medicamentos || 'Nenhum'}</p>
-          </div>
-        )}
+      {anamneseAluno && (
+        <div style={{ background: '#eff6ff', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #3b82f6', marginBottom: '15px', fontSize: '14px', color: '#1e3a8a' }}>
+          <strong>📋 Resumo:</strong> Condições: {anamneseAluno.condicoes_medicas || 'N/A'} | Gatilhos: {anamneseAluno.gatilhos_sensoriais || 'N/A'}
+        </div>
+      )}
 
-        <input 
-          type="text" 
-          className="anamnese-input" 
-          placeholder="Título do Treino (Ex: Treino A - Força e Estabilidade)" 
-          value={titulo} 
-          onChange={(e) => setTitulo(e.target.value)} 
-          style={{ marginTop: '10px' }}
-          required 
-        />
-      </div>
+      <input 
+        type="text" 
+        style={styles.input} 
+        placeholder="📝 Título do Treino (Ex: Treino A - Hipertrofia)" 
+        value={titulo} 
+        onChange={(e) => setTitulo(e.target.value)} 
+      />
 
-      <hr style={{ margin: '20px 0', border: '1px solid #ddd' }} />
-
-      {/* 2. ADICIONAR EXERCÍCIOS DA BIBLIOTECA */}
-      <form onSubmit={handleAdicionarALista} style={{ background: '#f1f3f5', padding: '15px', borderRadius: '8px' }}>
-        <h4 style={{ marginTop: 0 }}>➕ Adicionar Exercício:</h4>
+      {/* 2. ADICIONAR EXERCÍCIOS */}
+      <div style={styles.sectionBox}>
+        <h4 style={{ margin: '0 0 15px 0', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '18px' }}>+</span> Adicionar Exercício
+        </h4>
         
-        <select 
-          className="anamnese-input"
-          value={exercicioSelecionadoId} 
-          onChange={handleSelecaoExercicio}
-          required
-        >
-          <option value="">Selecione um exercício da biblioteca...</option>
+        <select style={styles.input} value={exercicioSelecionadoId} onChange={handleSelecaoExercicio}>
+          <option value="">🔍 Selecione um exercício da biblioteca...</option>
           {biblioteca.map(ex => (
             <option key={ex.id} value={ex.id}>
-              {ex.padrao} — {ex.nome} ({ex.equipamento})
+              {ex.padrao} — {ex.nome}
             </option>
           ))}
         </select>
 
         {detalhesExercicio && (
-          <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', fontSize: '13px', marginTop: '10px', border: '1px solid #dee2e6' }}>
-            <strong>💡 Metodologia Body Puzzle:</strong> {detalhesExercicio.pontos_atencao || 'Nenhum registo'}
+          <div style={{ background: '#fff', padding: '12px', borderRadius: '6px', fontSize: '13px', color: '#475569', marginBottom: '15px', border: '1px dashed #cbd5e1' }}>
+            <strong>💡 Foco:</strong> {detalhesExercicio.pontos_atencao || 'Sem observações específicas'}
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-          <input type="number" className="anamnese-input" placeholder="Séries" value={series} onChange={e => setSeries(e.target.value)} required />
-          <input type="number" className="anamnese-input" placeholder="Repetições" value={repeticoes} onChange={e => setRepeticoes(e.target.value)} required />
-          <input type="number" className="anamnese-input" placeholder="Carga (kg)" value={carga} onChange={e => setCarga(e.target.value)} />
+        <div style={styles.grid3}>
+          <div>
+            <label style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', marginLeft: '5px' }}>Séries</label>
+            <input type="number" style={{...styles.input, marginBottom: 0}} placeholder="Ex: 4" value={series} onChange={e => setSeries(e.target.value)} />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', marginLeft: '5px' }}>Repetições</label>
+            <input type="number" style={{...styles.input, marginBottom: 0}} placeholder="Ex: 10" value={repeticoes} onChange={e => setRepeticoes(e.target.value)} />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', marginLeft: '5px' }}>Carga (kg)</label>
+            <input type="number" style={{...styles.input, marginBottom: 0}} placeholder="Opcional" value={carga} onChange={e => setCarga(e.target.value)} />
+          </div>
         </div>
 
-        <button type="submit" className="anamnese-btn" style={{ background: '#6c757d', marginTop: '10px' }}>
-          + Inserir na Lista
+        <button onClick={handleAdicionarALista} style={styles.btnSecondary}>
+          Adicionar ao Treino
         </button>
-      </form>
+      </div>
 
-      {/* 3. LISTA DE EXERCÍCIOS ADICIONADOS E BOTÃO FINAL */}
+      {/* 3. LISTA DE EXERCÍCIOS ADICIONADOS */}
       {listaExerciciosTreino.length > 0 && (
-        <div style={{ marginTop: '20px', textAlign: 'left' }}>
-          <h4>Lista do Treino Atual:</h4>
-          <ul style={{ listStyleType: 'none', padding: 0 }}>
-            {listaExerciciosTreino.map((ex, index) => (
-              <li key={ex.id_unico} style={{ background: '#e9ecef', padding: '10px', margin: '5px 0', borderRadius: '4px', fontSize: '14px' }}>
-                <strong>{index + 1}. {ex.nome}</strong> | {ex.series}x{ex.repeticoes} | Carga: {ex.carga || 'N/A'}kg
-              </li>
-            ))}
-          </ul>
+        <div style={{ marginTop: '30px' }}>
+          <h4 style={{ color: '#1e293b', marginBottom: '15px' }}>🛒 Exercícios no Treino Atual ({listaExerciciosTreino.length}):</h4>
           
-          <button onClick={handleSalvarTreinoFinal} className="anamnese-btn" style={{ width: '100%', marginTop: '15px' }}>
-            Salvar e Enviar Treino Final
-          </button>
+          {listaExerciciosTreino.map((ex, index) => (
+            <div key={ex.id_unico} style={styles.cardExercicio}>
+              <div>
+                <strong style={{ color: '#0f172a', fontSize: '15px' }}>{index + 1}. {ex.nome}</strong>
+                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                  {ex.series}x{ex.repeticoes} • {ex.carga}kg • {ex.equipamento}
+                </div>
+              </div>
+              <button onClick={() => removerDaLista(ex.id_unico)} style={styles.btnRemove}>X</button>
+            </div>
+          ))}
+          
+          <div style={{ marginTop: '25px' }}>
+            <button onClick={handleSalvarTreinoFinal} style={styles.btnPrimary}>
+              Salvar Treino Finalizado
+            </button>
+          </div>
         </div>
       )}
     </div>
