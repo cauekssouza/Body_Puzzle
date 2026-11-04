@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../database/db';
+import { supabase } from '../lib/superbase';
 import { useNavigate } from 'react-router-dom';
 import './Anamnese.css';
 
