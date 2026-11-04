@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/superbase';
+import { supabase } from '../lib/superbase'; 
 import './ListaAlunos.css';
 
 export default function ListaAlunos() {
@@ -20,9 +20,18 @@ export default function ListaAlunos() {
 
   async function deletarAluno(id) {
     if (!window.confirm('Tem certeza que deseja apagar este aluno?')) return;
+    
+    // Executa a exclusão diretamente na tabela 'alunos' do Supabase
     const { error } = await supabase.from('alunos').delete().eq('id', id);
-    if (error) window.alert('Erro ao apagar: ' + error.message);
-    else carregarAlunos();
+    
+    if (error) {
+      console.error('Erro detalhado do Supabase ao apagar:', error);
+      window.alert('Erro ao apagar: ' + error.message);
+    } else {
+      // Remove da lista localmente e recarrega os dados do banco
+      setAlunos(alunos.filter(aluno => aluno.id !== id));
+      carregarAlunos();
+    }
   }
 
   function iniciarEdicao(aluno) {
