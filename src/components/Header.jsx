@@ -6,12 +6,11 @@ import "./Header.css"
 function Header({ sessao }) {
   const navigate = useNavigate();
 
-  // APENAS estes dois e-mails têm acesso administrativo/institucional
   const emailAtual = sessao?.user?.email;
   const isMaster = emailAtual === 'cauekssouza@gmail.com';
   const isViewer = emailAtual === 'bodypuzzle.treinamento@gmail.com';
   
-  const podeVerDashboard = isMaster || isViewer;
+  const podeGerenciar = isMaster || isViewer;
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -30,17 +29,19 @@ function Header({ sessao }) {
             <a key={item.href} href={item.href}>{item.label}</a>
           ))}
           
-          {/* Apenas visible para o Dashboard institucional */}
-          {podeVerDashboard && <Link to="/dashboard">Dashboard</Link>}
+          {podeGerenciar && (
+            <>
+              <Link to="/dashboard">Dashboard</Link>
+              <Link to="/anamneses-lista">Ver Anamneses</Link>
+              <Link to="/prescrever-treino">Prescrever Treino</Link>
+            </>
+          )}
           
-         {/* Apenas o Master vê as ferramentas de gestão e prescrição */}
           {isMaster && (
             <>
               <Link to="/cadastro">Cadastrar Aluno</Link>
               <Link to="/alunos">Ver Alunos</Link>
               <Link to="/anamnese">Nova Anamnese</Link>
-              <Link to="/anamneses-lista">Ver Anamneses</Link>
-              <Link to="/prescrever-treino">Prescrever Treino</Link>
             </>
           )}
         </nav>
@@ -48,7 +49,6 @@ function Header({ sessao }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           {sessao ? (
             <>
-              {/* Alunos normais veem o botão de agendar. O viewer (bodypuzzle) não vê. */}
               {!isViewer && (
                 <Link className="btn primary" to="/agendar" style={{ padding: '0.6rem 1.2rem', textDecoration: 'none' }}>Agendar Treino</Link>
               )}

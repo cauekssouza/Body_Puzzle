@@ -13,15 +13,16 @@ export default function PrescricaoTreino() {
   const [obsSensoriais, setObsSensoriais] = useState('');
   const navigate = useNavigate();
 
-  // Trava de segurança: Apenas o Cauê (Master) pode entrar aqui
+  // Trava de segurança: Apenas Cauê e a conta institucional podem entrar aqui
   useEffect(() => {
     async function verificarPermissao() {
       const { data: { user } } = await supabase.auth.getUser();
-      const isMaster = user?.email === 'cauekssouza@gmail.com';
+      const email = user?.email;
+      const temPermissao = email === 'cauekssouza@gmail.com' || email === 'bodypuzzle.treinamento@gmail.com';
       
-      if (!isMaster) {
-        window.alert('Acesso negado. Área restrita a administradores.');
-        navigate('/agendar'); // Envia o aluno de volta para a área dele
+      if (!temPermissao) {
+        window.alert('Acesso negado. Área restrita.');
+        navigate('/agendar');
       }
     }
     verificarPermissao();
@@ -35,9 +36,6 @@ export default function PrescricaoTreino() {
     carregarAlunos();
   }, []);
 
-  // ... restante do código da página ...
-
-  // Sempre que mudar o aluno, busca a anamnese dele para ajudar na prescrição
   useEffect(() => {
     async function carregarAnamnese() {
       if (!alunoSelecionadoId) {
@@ -97,7 +95,6 @@ export default function PrescricaoTreino() {
           ))}
         </select>
 
-        {/* Exibe o resumo da anamnese do aluno selecionado para orientar o treino */}
         {anamneseAluno && (
           <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #007bff', textAlign: 'left', fontSize: '14px' }}>
             <h4 style={{ margin: '0 0 8px 0', color: '#333' }}>📋 Resumo da Anamnese:</h4>
