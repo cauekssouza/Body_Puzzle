@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { menu } from "../data/contato"
-import { supabase } from "../database/db"
+import { supabase } from "../lib/superbase"
 import "./Header.css"
 
 function Header({ sessao }) {
