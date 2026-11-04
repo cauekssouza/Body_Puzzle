@@ -15,6 +15,9 @@ export default function PrescricaoTreino() {
   const [repeticoes, setRepeticoes] = useState('');
   const [carga, setCarga] = useState('');
   
+  // NOVO: Estado para a observação específica do exercício
+  const [observacaoExercicio, setObservacaoExercicio] = useState(''); 
+  
   const [listaExerciciosTreino, setListaExerciciosTreino] = useState([]);
 
   useEffect(() => {
@@ -61,16 +64,19 @@ export default function PrescricaoTreino() {
       series,
       repeticoes,
       carga: carga || 'Livre',
+      observacao: observacaoExercicio, // Guarda a observação digitada
       pontos_atencao: detalhesExercicio.pontos_atencao
     };
 
     setListaExerciciosTreino([...listaExerciciosTreino, novoExercicio]);
     
+    // Limpa todos os campos para o próximo exercício
     setExercicioSelecionadoId('');
     setDetalhesExercicio(null);
     setSeries('');
     setRepeticoes('');
     setCarga('');
+    setObservacaoExercicio(''); 
   }
 
   function removerDaLista(idParaRemover) {
@@ -84,9 +90,14 @@ export default function PrescricaoTreino() {
 
     const alunoObj = alunos.find(a => a.id === alunoSelecionadoId);
 
-    const textoTreino = listaExerciciosTreino.map(ex => 
-      `• ${ex.nome} (${ex.equipamento})\n  ${ex.series}x${ex.repeticoes} | Carga: ${ex.carga}kg\n  💡 Dica: ${ex.pontos_atencao}`
-    ).join('\n\n');
+    // Formata o texto final. Se houver observação, adiciona uma linha extra.
+    const textoTreino = listaExerciciosTreino.map(ex => {
+      let textoBase = `• ${ex.nome} (${ex.equipamento})\n  ${ex.series}x${ex.repeticoes} | Carga: ${ex.carga}kg\n  💡 Dica: ${ex.pontos_atencao}`;
+      if (ex.observacao) {
+        textoBase += `\n  📝 Obs: ${ex.observacao}`;
+      }
+      return textoBase;
+    }).join('\n\n');
 
     const { error } = await supabase.from('treinos').insert([{
       aluno_id: alunoSelecionadoId,
@@ -106,7 +117,7 @@ export default function PrescricaoTreino() {
     }
   }
 
-  // --- ESTILOS MODERNOS (Inline para garantir que funciona perfeitamente) ---
+  // --- ESTILOS MODERNOS ---
   const styles = {
     container: { maxWidth: '700px', margin: '40px auto', padding: '30px', background: '#ffffff', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.08)', fontFamily: 'system-ui, -apple-system, sans-serif' },
     title: { textAlign: 'center', color: '#1e293b', fontSize: '24px', fontWeight: '800', marginBottom: '25px', textTransform: 'uppercase', letterSpacing: '1px' },
@@ -116,7 +127,7 @@ export default function PrescricaoTreino() {
     btnPrimary: { width: '100%', padding: '15px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s', textTransform: 'uppercase' },
     btnSecondary: { padding: '12px 20px', background: '#64748b', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' },
     btnRemove: { background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' },
-    cardExercicio: { background: '#ffffff', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }
+    cardExercicio: { background: '#ffffff', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }
   };
 
   return (
@@ -179,6 +190,18 @@ export default function PrescricaoTreino() {
           </div>
         </div>
 
+        {/* CAMPO NOVO: Observação do Exercício */}
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', marginLeft: '5px' }}>Observação do Exercício (Opcional)</label>
+          <input 
+            type="text" 
+            style={{...styles.input, marginBottom: 0}} 
+            placeholder="Ex: Fazer movimento lento, cuidado com a lombar..." 
+            value={observacaoExercicio} 
+            onChange={e => setObservacaoExercicio(e.target.value)} 
+          />
+        </div>
+
         <button onClick={handleAdicionarALista} style={styles.btnSecondary}>
           Adicionar ao Treino
         </button>
@@ -191,11 +214,17 @@ export default function PrescricaoTreino() {
           
           {listaExerciciosTreino.map((ex, index) => (
             <div key={ex.id_unico} style={styles.cardExercicio}>
-              <div>
+              <div style={{ flex: 1 }}>
                 <strong style={{ color: '#0f172a', fontSize: '15px' }}>{index + 1}. {ex.nome}</strong>
                 <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
                   {ex.series}x{ex.repeticoes} • {ex.carga}kg • {ex.equipamento}
                 </div>
+                {/* MOSTRA A OBSERVAÇÃO NO CARTÃO SE ELA EXISTIR */}
+                {ex.observacao && (
+                  <div style={{ fontSize: '13px', color: '#0369a1', marginTop: '8px', background: '#e0f2fe', padding: '6px 10px', borderRadius: '4px', display: 'inline-block' }}>
+                    <strong>Obs:</strong> {ex.observacao}
+                  </div>
+                )}
               </div>
               <button onClick={() => removerDaLista(ex.id_unico)} style={styles.btnRemove}>X</button>
             </div>
