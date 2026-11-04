@@ -21,8 +21,9 @@ import Login from './pages/Login'
 import CadastroEquipe from './pages/CadastroEquipe' 
 import Dashboard from './pages/Dashboard'
 import PrescricaoTreino from './pages/PrescricaoTreino'
-import './components/Sections.css'
 import MeuTreino from './pages/MeuTreino'
+import './components/Sections.css'
+
 function Home() {
   return (
     <main>
@@ -68,11 +69,11 @@ function App() {
         <Route path="/anamnese" element={sessao ? <Anamnese /> : <Navigate to="/login" />} />
         <Route path="/anamneses-lista" element={sessao ? <ListaAnamneses /> : <Navigate to="/login" />} />
         <Route path="/dashboard" element={sessao ? <Dashboard /> : <Navigate to="/login" />} />
-        
-        {/* Rota de Prescrição de Treino devidamente inserida DENTRO de <Routes> */}
         <Route path="/prescrever-treino" element={sessao ? <PrescricaoTreino /> : <Navigate to="/login" />} />
+        
+        {/* Rota do Aluno para ver o seu treino (DENTRO de <Routes>) */}
+        <Route path="/meu-treino" element={sessao ? <MeuTreino /> : <Navigate to="/login" />} />
       </Routes>
-      <Route path="/meu-treino" element={sessao ? <MeuTreino /> : <Navigate to="/login" />} />
       <Footer />
     </>
   )
