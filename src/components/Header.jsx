@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { menu } from "../data/contato"
-import { supabase } from "../lib/superbase"
+import { supabase } from "../database/db"
 import "./Header.css"
 
 function Header({ sessao }) {
@@ -10,7 +10,6 @@ function Header({ sessao }) {
 
   const emailAtual = sessao?.user?.email;
 
-  // Lista oficial de administradores
   const emailsAdmin = [
     'cauekssouza@gmail.com',
     'bodypuzzle.treinamento@gmail.com',
@@ -71,11 +70,11 @@ function Header({ sessao }) {
             <a key={item.href} href={item.href}>{item.label}</a>
           ))}
           
-          {/* Menu compacto e organizado para Administradores */}
+          {/* Menu de Gestão Compacto para os 5 Admins */}
           {isAdmin && (
             <div className="admin-menu-group">
               <span className="admin-badge-label">⚙️ Gestão:</span>
-              <Link to="/dashboard">Dashboard</Link>
+              <Link to="/dashboard">Painel</Link>
               <Link to="/anamneses-lista">Anamneses</Link>
               <Link to="/prescrever-treino">Prescrever</Link>
               <Link to="/cadastro">Cadastrar</Link>
@@ -89,20 +88,20 @@ function Header({ sessao }) {
           )}
         </nav>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {sessao ? (
             <>
               {!isViewer && !isAdmin && (
-                <Link className="btn primary" to="/agendar" style={{ padding: '0.5rem 1rem', fontSize: '13px', textDecoration: 'none' }}>Agendar</Link>
+                <Link className="btn primary" to="/agendar" style={{ padding: '0.4rem 0.8rem', fontSize: '12.5px', textDecoration: 'none' }}>Agendar</Link>
               )}
-              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#007bff' }}>
+              <span style={{ fontSize: '12.5px', fontWeight: 'bold', color: '#007bff', whiteSpace: 'nowrap' }}>
                 👤 {emailAtual ? emailAtual.split('@')[0] : ''}
               </span>
-              <button onClick={handleLogout} className="btn primary header-cta" style={{ backgroundColor: '#dc3545', border: 'none', cursor: 'pointer', padding: '0.4rem 0.8rem', fontSize: '13px' }}>Sair</button>
+              <button onClick={handleLogout} className="btn primary header-cta" style={{ backgroundColor: '#dc3545', border: 'none', cursor: 'pointer', padding: '0.35rem 0.7rem', fontSize: '12.5px' }}>Sair</button>
             </>
           ) : (
             <>
-              <Link to="/login" style={{ color: '#333', textDecoration: 'none', fontWeight: 'bold', fontSize: '14px' }}>Entrar</Link>
+              <Link to="/login" style={{ color: '#333', textDecoration: 'none', fontWeight: 'bold', fontSize: '13px' }}>Entrar</Link>
               <Link className="btn primary header-cta" to="/cadastro">Cadastrar-se</Link>
             </>
           )}

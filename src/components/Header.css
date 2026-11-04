@@ -11,14 +11,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
-  padding-block: 14px;
+  gap: 1rem;
+  padding-block: 10px;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   text-decoration: none;
   color: var(--ink, #333);
   flex-shrink: 0;
@@ -27,7 +27,7 @@
 .brand b {
   font-family: var(--display, sans-serif);
   font-weight: 900;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   line-height: 0.9;
   text-transform: uppercase;
   letter-spacing: -0.5px;
@@ -36,15 +36,9 @@
 .header-nav { 
   display: flex; 
   align-items: center;
-  gap: 1rem; 
-  font-size: 0.85rem; 
+  gap: 0.8rem; 
+  font-size: 0.8rem; 
   font-weight: 600; 
-  overflow-x: auto; /* Permite rolar suavemente caso ultrapasse o espaço em telas intermediárias */
-  scrollbar-width: none; /* Oculta a barra de scroll no Firefox */
-}
-
-.header-nav::-webkit-scrollbar {
-  display: none; /* Oculta a barra de scroll no Chrome/Safari */
 }
 
 .header-nav a { 
@@ -58,13 +52,13 @@
   color: var(--ink, #000); 
 }
 
-/* Bloco compacto e elegante para a barra de Gestão dos 5 Admins */
+/* Grupo de Gestão compacto com textos otimizados para caber tudo */
 .admin-menu-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: #f8f9fa;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 6px;
   border: 1px solid #e9ecef;
   flex-shrink: 0;
@@ -78,20 +72,20 @@
 }
 
 .admin-menu-group a {
-  font-size: 12.5px !important;
+  font-size: 12px !important;
   color: #0056b3 !important;
   font-weight: 600;
 }
 
 .header-cta { 
-  padding: 0.5rem 1rem; 
-  font-size: 0.85rem; 
+  padding: 0.4rem 0.9rem; 
+  font-size: 0.8rem; 
   border-radius: 6px;
   white-space: nowrap;
 }
 
-@media (max-width: 1100px) {
-  /* Em ecrãs médios, esconde os links institucionais públicos para dar prioridade total à barra de gestão e navegação */
+@media (max-width: 1200px) {
+  /* Oculta os links públicos secundários em telas intermediárias para priorizar a barra de admin */
   .header-nav > a:not(.admin-menu-group a) {
     display: none;
   }
