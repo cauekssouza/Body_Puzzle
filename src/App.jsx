@@ -21,6 +21,7 @@ import Login from './pages/Login'
 import CadastroEquipe from './pages/CadastroEquipe' 
 import './components/Sections.css'
 import Dashboard from './pages/Dashboard'
+import PrescricaoTreino from './pages/PrescricaoTreino';
 
 function Home() {
   return (
@@ -68,6 +69,7 @@ function App() {
         <Route path="/anamneses-lista" element={sessao ? <ListaAnamneses /> : <Navigate to="/login" />} />
         <Route path="/dashboard" element={sessao ? <Dashboard /> : <Navigate to="/login" />} />
       </Routes>
+      <Route path="/prescrever-treino" element={sessao ? <PrescricaoTreino /> : <Navigate to="/login" />} />
       <Footer />
     </>
   )

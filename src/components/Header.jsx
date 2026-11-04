@@ -33,13 +33,14 @@ function Header({ sessao }) {
           {/* Apenas visible para o Dashboard institucional */}
           {podeVerDashboard && <Link to="/dashboard">Dashboard</Link>}
           
-          {/* Apenas o Cauê (isMaster) vê as ferramentas completas */}
+         {/* Apenas o Master vê as ferramentas de gestão e prescrição */}
           {isMaster && (
             <>
               <Link to="/cadastro">Cadastrar Aluno</Link>
               <Link to="/alunos">Ver Alunos</Link>
               <Link to="/anamnese">Nova Anamnese</Link>
               <Link to="/anamneses-lista">Ver Anamneses</Link>
+              <Link to="/prescrever-treino">Prescrever Treino</Link>
             </>
           )}
         </nav>
