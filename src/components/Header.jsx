@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom"
 import { menu } from "../data/contato"
-import { supabase } from "../lib/superbase"
+import { supabase } from "../lib/superbase" 
 import "./Header.css"
 
 function Header({ sessao }) {
@@ -29,6 +29,7 @@ function Header({ sessao }) {
             <a key={item.href} href={item.href}>{item.label}</a>
           ))}
           
+          {/* Menus para gestores / equipa */}
           {podeGerenciar && (
             <>
               <Link to="/dashboard">Dashboard</Link>
@@ -37,12 +38,18 @@ function Header({ sessao }) {
             </>
           )}
           
+          {/* Menus exclusivos do Master */}
           {isMaster && (
             <>
               <Link to="/cadastro">Cadastrar Aluno</Link>
               <Link to="/alunos">Ver Alunos</Link>
               <Link to="/anamnese">Nova Anamnese</Link>
             </>
+          )}
+
+          {/* Menu para o Aluno ver a sua própria ficha de treino */}
+          {sessao && !podeGerenciar && (
+            <Link to="/meu-treino">Meu Treino</Link>
           )}
         </nav>
         

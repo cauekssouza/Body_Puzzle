@@ -22,7 +22,7 @@ import CadastroEquipe from './pages/CadastroEquipe'
 import Dashboard from './pages/Dashboard'
 import PrescricaoTreino from './pages/PrescricaoTreino'
 import './components/Sections.css'
-
+import MeuTreino from './pages/MeuTreino'
 function Home() {
   return (
     <main>
@@ -72,6 +72,7 @@ function App() {
         {/* Rota de Prescrição de Treino devidamente inserida DENTRO de <Routes> */}
         <Route path="/prescrever-treino" element={sessao ? <PrescricaoTreino /> : <Navigate to="/login" />} />
       </Routes>
+      <Route path="/meu-treino" element={sessao ? <MeuTreino /> : <Navigate to="/login" />} />
       <Footer />
     </>
   )
