@@ -31,15 +31,20 @@ function Header({ sessao }) {
             <a key={item.href} href={item.href}>{item.label}</a>
           ))}
           
-          {/* Menus Restritos baseados na função */}
-          {podeVerDashboard && <Link to="/dashboard">Dashboard</Link>}
+          {/* Dashboard e Lista de Anamneses aparecem para Master e Viewer */}
+          {podeVerDashboard && (
+            <>
+              <Link to="/dashboard">Dashboard</Link>
+              <Link to="/anamneses-lista">Ver Anamneses</Link>
+            </>
+          )}
           
+          {/* Ações de criação e edição aparecem APENAS para o Master */}
           {isMaster && (
             <>
               <Link to="/cadastro">Cadastrar Aluno</Link>
               <Link to="/alunos">Ver Alunos</Link>
-              <Link to="/anamnese">Anamnese</Link>
-              <Link to="/anamneses-lista">Ver Anamneses</Link>
+              <Link to="/anamnese">Nova Anamnese</Link>
             </>
           )}
         </nav>
