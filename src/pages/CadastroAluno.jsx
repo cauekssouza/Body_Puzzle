@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../lib/superbase'; 
+import { supabase } from '../lib/superbase';
 import { useNavigate } from 'react-router-dom';
 import './Anamnese.css';
 
@@ -7,6 +7,7 @@ export default function CadastroAluno() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [password, setPassword] = useState('');
   const [carregando, setCarregando] = useState(false);
   const navigate = useNavigate();
 
@@ -15,27 +16,40 @@ export default function CadastroAluno() {
     setCarregando(true);
 
     try {
-      // Gravar o registo APENAS na tabela de alunos (sem mexer na Autenticação)
-      const { error: alunoError } = await supabase.from('alunos').insert([{
-        nome,
+      // 1. Criar o utilizador na Autenticação do Supabase
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
-        telefone
-      }]);
+        password,
+      });
 
-      if (alunoError) throw alunoError;
+      if (authError) throw authError;
 
-      window.alert('Aluno cadastrado com sucesso!');
-      
-      // Limpa os campos após salvar
-      setNome('');
-      setEmail('');
-      setTelefone('');
-      
-      // Opcional: Redirecionar para a lista de alunos após o cadastro
-      // navigate('/alunos'); 
-      
+      if (authData.user) {
+        // 2. Gravar o registo na tabela 'alunos' associado ao ID de autenticação
+        const { error: alunoError } = await supabase.from('alunos').insert([{
+          user_id: authData.user.id,
+          nome,
+          email,
+          telefone
+        }]);
+
+        if (alunoError) throw alunoError;
+
+        // 3. Registar o perfil de acesso como 'aluno'
+        const { error: perfilError } = await supabase.from('perfis').insert([{
+          id: authData.user.id,
+          nome,
+          email,
+          role: 'aluno'
+        }]);
+
+        if (perfilError) throw perfilError;
+
+        window.alert('Conta de aluno criada com sucesso!');
+        navigate('/login'); // Ou para a lista de alunos
+      }
     } catch (error) {
-      window.alert('Erro ao cadastrar aluno: ' + error.message);
+      window.alert('Erro ao criar conta: ' + error.message);
     } finally {
       setCarregando(false);
     }
@@ -73,8 +87,19 @@ export default function CadastroAluno() {
           required 
         />
 
-        <button className="anamnese-btn" type="submit" disabled={carregando}>
-          {carregando ? 'A salvar...' : 'Concluir Cadastro'}
+        {/* CAMPO DE PALAVRA-PASSE RESTAURADO */}
+        <input 
+          type="password" 
+          className="anamnese-input" 
+          placeholder="Palavra-passe (mínimo 6 caracteres)" 
+          value={password} 
+          onChange={(e) => setPassword(e.target.value)} 
+          minLength={6}
+          required 
+        />
+
+        <button className="anamnese-btn" type="submit" disabled={carregando} style={{ background: '#3b82f6', marginTop: '10px' }}>
+          {carregando ? 'A criar conta...' : 'Concluir Cadastro'}
         </button>
       </form>
     </div>
