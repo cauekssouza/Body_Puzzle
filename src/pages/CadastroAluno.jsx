@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../lib/superbase'; // Mantive o teu caminho do import
+import { supabase } from '../lib/superbase'; 
 import { useNavigate } from 'react-router-dom';
 import './Anamnese.css';
 
