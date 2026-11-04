@@ -1,16 +1,46 @@
+import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { menu } from "../data/contato"
-import { supabase } from "../lib/superbase" 
+import { supabase } from "../lib/superbase"
 import "./Header.css"
 
 function Header({ sessao }) {
   const navigate = useNavigate();
+  const [role, setRole] = useState('aluno');
 
   const emailAtual = sessao?.user?.email;
-  const isMaster = emailAtual === 'cauekssouza@gmail.com';
+
+  useEffect(() => {
+    async function buscarPerfil() {
+      if (!sessao?.user?.id) {
+        setRole('aluno');
+        return;
+      }
+      
+      // Consulta a tabela de perfis para obter o papel exato do utilizador
+      const { data } = await supabase
+        .from('perfis')
+        .select('role')
+        .eq('id', sessao.user.id)
+        .single();
+
+      if (data) {
+        setRole(data.role); // 'admin' ou 'aluno'
+      } else {
+        // Fallback para contas principais de gestão por segurança
+        if (emailAtual === 'cauekssouza@gmail.com' || emailAtual === 'bodypuzzle.treinamento@gmail.com') {
+          setRole('admin');
+        } else {
+          setRole('aluno');
+        }
+      }
+    }
+    buscarPerfil();
+  }, [sessao, emailAtual]);
+
+  const isAdmin = role === 'admin';
   const isViewer = emailAtual === 'bodypuzzle.treinamento@gmail.com';
-  
-  const podeGerenciar = isMaster || isViewer;
+  const podeGerenciar = isAdmin;
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -29,25 +59,19 @@ function Header({ sessao }) {
             <a key={item.href} href={item.href}>{item.label}</a>
           ))}
           
-          {/* Menus para gestores / equipa */}
+          {/* Menus de gestão exclusivos para administradores */}
           {podeGerenciar && (
             <>
               <Link to="/dashboard">Dashboard</Link>
               <Link to="/anamneses-lista">Ver Anamneses</Link>
               <Link to="/prescrever-treino">Prescrever Treino</Link>
-            </>
-          )}
-          
-          {/* Menus exclusivos do Master */}
-          {isMaster && (
-            <>
               <Link to="/cadastro">Cadastrar Aluno</Link>
               <Link to="/alunos">Ver Alunos</Link>
               <Link to="/anamnese">Nova Anamnese</Link>
             </>
           )}
-
-          {/* Menu para o Aluno ver a sua própria ficha de treino */}
+          
+          {/* Menu exclusivo para Alunos verem o seu treino */}
           {sessao && !podeGerenciar && (
             <Link to="/meu-treino">Meu Treino</Link>
           )}
@@ -56,7 +80,7 @@ function Header({ sessao }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           {sessao ? (
             <>
-              {!isViewer && (
+              {!isViewer && !podeGerenciar && (
                 <Link className="btn primary" to="/agendar" style={{ padding: '0.6rem 1.2rem', textDecoration: 'none' }}>Agendar Treino</Link>
               )}
               <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#007bff' }}>
