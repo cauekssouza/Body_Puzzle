@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/superbase';
+import { supabase } from '../lib/superbase'; // Caminho corrigido para evitar erro na Vercel
 import './Anamnese.css';
 
 export default function Anamnese() {
@@ -12,7 +12,7 @@ export default function Anamnese() {
 
   useEffect(() => {
     async function carregarAlunos() {
-      const { data } = await supabase.from('alunos').select('id, nome').order('nome');
+      const { data } = await supabase.from('alunos').select('id, nome, user_id').order('nome');
       if (data) setAlunos(data);
     }
     carregarAlunos();
@@ -22,8 +22,13 @@ export default function Anamnese() {
     e.preventDefault();
     if (!alunoId) return window.alert('Selecione um aluno primeiro!');
 
+    // Descobre qual é o user_id do aluno selecionado na lista
+    const alunoSelecionado = alunos.find(a => a.id === alunoId);
+    const userIdAluno = alunoSelecionado ? alunoSelecionado.user_id : null;
+
     const { error } = await supabase.from('anamneses').insert([{
       aluno_id: alunoId,
+      user_id: userIdAluno, // Vincula o user_id do Auth automaticamente
       condicoes_medicas: condicoes,
       gatilhos_sensoriais: gatilhos,
       medicamentos: medicamentos,
