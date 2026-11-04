@@ -28,7 +28,7 @@ function Header({ sessao }) {
         setRole(data.role); // 'admin' ou 'aluno'
       } else {
         // Fallback para contas principais de gestão por segurança
-        if (emailAtual === 'cauekssouza@gmail.com' || emailAtual === 'bodypuzzle.treinamento@gmail.com') {
+        if (emailAtual === 'cauekssouza@gmail.com' || emailAtual === 'bodypuzzle.treinamento@gmail.com' || emailAtual === 'edususs@yahoo.com.br' || emailAtual === 'andre.goncalves03@hotmail.com') {
           setRole('admin');
         } else {
           setRole('aluno');
