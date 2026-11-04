@@ -8,14 +8,17 @@ export default function PrescricaoTreino() {
   
   const [titulo, setTitulo] = useState('');
   const [biblioteca, setBiblioteca] = useState([]);
+  
+  // NOVOS ESTADOS PARA A PESQUISA INTELIGENTE
+  const [termoPesquisa, setTermoPesquisa] = useState('');
+  const [mostrarDropdown, setMostrarDropdown] = useState(false);
+  
   const [exercicioSelecionadoId, setExercicioSelecionadoId] = useState('');
   const [detalhesExercicio, setDetalhesExercicio] = useState(null);
   
   const [series, setSeries] = useState('');
   const [repeticoes, setRepeticoes] = useState('');
   const [carga, setCarga] = useState('');
-  
-  // NOVO: Estado para a observação específica do exercício
   const [observacaoExercicio, setObservacaoExercicio] = useState(''); 
   
   const [listaExerciciosTreino, setListaExerciciosTreino] = useState([]);
@@ -43,17 +46,24 @@ export default function PrescricaoTreino() {
     carregarAnamnese();
   }, [alunoSelecionadoId]);
 
-  function handleSelecaoExercicio(e) {
-    const id = e.target.value;
-    setExercicioSelecionadoId(id);
-    const exercicioCompleto = biblioteca.find(ex => ex.id === id);
-    setDetalhesExercicio(exercicioCompleto || null);
+  // FUNÇÃO DE FILTRO: Procura pelo nome do exercício ou pelo padrão
+  const exerciciosFiltrados = biblioteca.filter(ex => 
+    ex.nome.toLowerCase().includes(termoPesquisa.toLowerCase()) || 
+    ex.padrao.toLowerCase().includes(termoPesquisa.toLowerCase())
+  );
+
+  // QUANDO CLICA NUM EXERCÍCIO DA LISTA PESQUISADA
+  function selecionarExercicio(ex) {
+    setExercicioSelecionadoId(ex.id);
+    setDetalhesExercicio(ex);
+    setTermoPesquisa(`${ex.padrao} — ${ex.nome}`); // Preenche a caixa com o nome escolhido
+    setMostrarDropdown(false); // Esconde a lista
   }
 
   function handleAdicionarALista(e) {
     e.preventDefault();
     if (!exercicioSelecionadoId || !series || !repeticoes) {
-      return window.alert("Preencha o exercício, séries e repetições.");
+      return window.alert("Selecione o exercício na lista, preencha as séries e repetições.");
     }
 
     const novoExercicio = {
@@ -64,15 +74,16 @@ export default function PrescricaoTreino() {
       series,
       repeticoes,
       carga: carga || 'Livre',
-      observacao: observacaoExercicio, // Guarda a observação digitada
+      observacao: observacaoExercicio,
       pontos_atencao: detalhesExercicio.pontos_atencao
     };
 
     setListaExerciciosTreino([...listaExerciciosTreino, novoExercicio]);
     
-    // Limpa todos os campos para o próximo exercício
+    // Limpa os campos para o próximo
     setExercicioSelecionadoId('');
     setDetalhesExercicio(null);
+    setTermoPesquisa(''); // Limpa a barra de pesquisa
     setSeries('');
     setRepeticoes('');
     setCarga('');
@@ -90,7 +101,6 @@ export default function PrescricaoTreino() {
 
     const alunoObj = alunos.find(a => a.id === alunoSelecionadoId);
 
-    // Formata o texto final. Se houver observação, adiciona uma linha extra.
     const textoTreino = listaExerciciosTreino.map(ex => {
       let textoBase = `• ${ex.nome} (${ex.equipamento})\n  ${ex.series}x${ex.repeticoes} | Carga: ${ex.carga}kg\n  💡 Dica: ${ex.pontos_atencao}`;
       if (ex.observacao) {
@@ -127,7 +137,12 @@ export default function PrescricaoTreino() {
     btnPrimary: { width: '100%', padding: '15px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s', textTransform: 'uppercase' },
     btnSecondary: { padding: '12px 20px', background: '#64748b', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' },
     btnRemove: { background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' },
-    cardExercicio: { background: '#ffffff', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }
+    cardExercicio: { background: '#ffffff', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' },
+    
+    // Estilos do novo Dropdown Inteligente
+    searchContainer: { position: 'relative', marginBottom: '15px' },
+    dropdownList: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '250px', overflowY: 'auto', zIndex: 10, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' },
+    dropdownItem: { padding: '12px 15px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', fontSize: '14px', color: '#334155', background: '#fff' }
   };
 
   return (
@@ -160,14 +175,39 @@ export default function PrescricaoTreino() {
           <span style={{ fontSize: '18px' }}>+</span> Adicionar Exercício
         </h4>
         
-        <select style={styles.input} value={exercicioSelecionadoId} onChange={handleSelecaoExercicio}>
-          <option value="">🔍 Selecione um exercício da biblioteca...</option>
-          {biblioteca.map(ex => (
-            <option key={ex.id} value={ex.id}>
-              {ex.padrao} — {ex.nome}
-            </option>
-          ))}
-        </select>
+        {/* BARRA DE PESQUISA INTELIGENTE */}
+        <div style={styles.searchContainer}>
+          <input 
+            type="text"
+            style={{...styles.input, marginBottom: 0}}
+            placeholder="🔍 Digite para pesquisar um exercício (ex: Squat, Peito...)"
+            value={termoPesquisa}
+            onChange={(e) => {
+              setTermoPesquisa(e.target.value);
+              setMostrarDropdown(true);
+              setExercicioSelecionadoId(''); // Limpa a seleção se a pessoa começar a apagar o texto
+              setDetalhesExercicio(null);
+            }}
+            onFocus={() => setMostrarDropdown(true)}
+            onBlur={() => setTimeout(() => setMostrarDropdown(false), 200)} // Delay para permitir o clique na lista
+          />
+          
+          {mostrarDropdown && exerciciosFiltrados.length > 0 && (
+            <div style={styles.dropdownList}>
+              {exerciciosFiltrados.map(ex => (
+                <div 
+                  key={ex.id} 
+                  style={styles.dropdownItem}
+                  onClick={() => selecionarExercicio(ex)}
+                  onMouseEnter={(e) => e.target.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.target.style.background = '#fff'}
+                >
+                  <strong>{ex.nome}</strong> <span style={{color: '#94a3b8', fontSize: '12px'}}>— {ex.padrao}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {detalhesExercicio && (
           <div style={{ background: '#fff', padding: '12px', borderRadius: '6px', fontSize: '13px', color: '#475569', marginBottom: '15px', border: '1px dashed #cbd5e1' }}>
@@ -190,7 +230,6 @@ export default function PrescricaoTreino() {
           </div>
         </div>
 
-        {/* CAMPO NOVO: Observação do Exercício */}
         <div style={{ marginBottom: '15px' }}>
           <label style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', marginLeft: '5px' }}>Observação do Exercício (Opcional)</label>
           <input 
@@ -219,7 +258,6 @@ export default function PrescricaoTreino() {
                 <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
                   {ex.series}x{ex.repeticoes} • {ex.carga}kg • {ex.equipamento}
                 </div>
-                {/* MOSTRA A OBSERVAÇÃO NO CARTÃO SE ELA EXISTIR */}
                 {ex.observacao && (
                   <div style={{ fontSize: '13px', color: '#0369a1', marginTop: '8px', background: '#e0f2fe', padding: '6px 10px', borderRadius: '4px', display: 'inline-block' }}>
                     <strong>Obs:</strong> {ex.observacao}
