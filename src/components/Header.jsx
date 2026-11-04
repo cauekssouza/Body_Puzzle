@@ -47,7 +47,10 @@ function Header({ sessao }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           {sessao ? (
             <>
-              <Link className="btn primary" to="/agendar" style={{ padding: '0.6rem 1.2rem', textDecoration: 'none' }}>Agendar Treino</Link>
+              {/* O botão de Agendar aparece para todos os logados, EXCETO para a conta bodypuzzle */}
+              {!isViewer && (
+                <Link className="btn primary" to="/agendar" style={{ padding: '0.6rem 1.2rem', textDecoration: 'none' }}>Agendar Treino</Link>
+              )}
               <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#007bff' }}>
                 👤 {emailAtual.split('@')[0]}
               </span>
