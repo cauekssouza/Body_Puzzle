@@ -146,17 +146,17 @@ export default function GeradorCartaTrunfo() {
     }
   }
 
-  // --- ESTILOS ATUALIZADOS PARA ALINHAMENTO PERFEITO ---
+// --- ESTILOS COM ALINHAMENTO FLEXBOX (PERFEITO AO CENTRO) ---
   const styles = {
     container: { maxWidth: '800px', margin: '40px auto', padding: '30px', background: '#fff', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.08)' },
     select: { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', marginBottom: '20px' },
     btnPrimary: { width: '100%', padding: '15px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginTop: '20px' },
     
-    // Coordenadas da Carta Trunfo
+    // CONTENTOR DA IMAGEM
     cartaBox: { 
       position: 'relative', 
       width: '400px', 
-      height: '650px', 
+      height: '666px', 
       backgroundImage: 'url("/molde-carta.jpg")', 
       backgroundSize: 'cover', 
       backgroundPosition: 'center', 
@@ -165,51 +165,70 @@ export default function GeradorCartaTrunfo() {
       overflow: 'hidden', 
       fontFamily: 'system-ui, -apple-system, sans-serif' 
     },
+    
+    // NOTA OVERALL (Bolinha Branca Topo Direito)
     overallNota: { 
       position: 'absolute', 
-      top: '11.5%', 
-      right: '4.5%', 
-      fontSize: '38px', 
+      top: '12%',       // Ajuste vertical
+      right: '6.5%',    // Ajuste horizontal
+      width: '75px',    // Largura da caixa invisível
+      height: '50px',   // Altura da caixa invisível
+      display: 'flex', 
+      justifyContent: 'center', // Centra na horizontal
+      alignItems: 'center',     // Centra na vertical
+      fontSize: '40px', 
       fontWeight: '900', 
-      color: '#4460B8', 
-      textAlign: 'center', 
-      width: '65px' 
+      color: '#4460B8'
     },
+    
+    // NOME DO ALUNO (Barra Azul Central)
     nomeAluno: { 
       position: 'absolute', 
-      top: '43.2%', 
-      width: '100%', 
-      textAlign: 'center', 
-      fontSize: '24px', 
+      top: '44%',       // Altura exata da barra
+      width: '100%',    // Ocupa a largura toda
+      height: '40px',   // Altura da caixa
+      display: 'flex',
+      justifyContent: 'center', // Centra horizontalmente
+      alignItems: 'center',     // Centra verticalmente
+      fontSize: '22px', 
       fontWeight: '900', 
       color: '#ffffff', 
-      letterSpacing: '1px', 
+      letterSpacing: '2px', 
       textTransform: 'uppercase' 
     },
+    
+    // LINHAS DOS ATRIBUTOS
     linhaAtributo: (index) => ({ 
       position: 'absolute', 
-      top: `${51.8 + (index * 7.4)}%`, 
+      top: `${53.2 + (index * 7.25)}%`, // A descida milimétrica a cada barra
       left: '9%', 
-      width: '82%', 
+      width: '82%',     // Define a distância entre o texto esquerdo e o número direito
+      height: '35px', 
       display: 'flex', 
       justifyContent: 'space-between', 
-      alignItems: 'center', 
-      height: '32px' 
+      alignItems: 'center' 
     }),
+    
+    // TEXTO DO ATRIBUTO (Esquerda)
     nomeAtributo: { 
       color: '#ffffff', 
       fontSize: '15px', 
-      fontWeight: '800', 
-      marginLeft: '15px', 
+      fontWeight: '900', 
+      marginLeft: '10px', 
       letterSpacing: '1px' 
     },
+    
+    // NOTA DO ATRIBUTO (Bolinhas Brancas Direita)
     notaAtributo: { 
       color: '#4460B8', 
       fontSize: '22px', 
       fontWeight: '900', 
       width: '50px', 
-      textAlign: 'center',
-      marginRight: '2px' 
+      height: '35px',
+      display: 'flex',
+      justifyContent: 'center', // Força o número para o centro da bolinha
+      alignItems: 'center',     // Força para o centro vertical
+      marginRight: '-2px'       // Ajuste fino para a direita
     }
   };
 
