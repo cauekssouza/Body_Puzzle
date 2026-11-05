@@ -70,7 +70,7 @@ function Header({ sessao }) {
             <a key={item.href} href={item.href}>{item.label}</a>
           ))}
           
-          {/* Menu de Gestão Compacto para os 5 Admins */}
+          {/* Menu de Gestão Compacto para os Admins */}
           {isAdmin && (
             <div className="admin-menu-group">
               <span className="admin-badge-label">⚙️ Gestão:</span>
@@ -79,6 +79,9 @@ function Header({ sessao }) {
               <Link to="/prescrever-treino">Prescrever</Link>
               <Link to="/cadastro">Cadastrar</Link>
               <Link to="/alunos">Alunos</Link>
+              {/* NOVOS LINKS DA METODOLOGIA */}
+              <Link to="/avaliacao">Avaliação</Link>
+              <Link to="/carta-trunfo">Carta Trunfo</Link>
             </div>
           )}
           

@@ -25,6 +25,10 @@ import MeuTreino from './pages/MeuTreino'
 import RotaAdmin from './components/RotaAdmin'
 import './components/Sections.css'
 
+// NOVOS IMPORTS DA METODOLOGIA
+import AvaliacaoFisica from './pages/AvaliacaoFisica'
+import GeradorCartaTrunfo from './pages/GeradorCartaTrunfo'
+
 function Home() {
   return (
     <main>
@@ -69,6 +73,10 @@ function App() {
         <Route path="/alunos" element={<RotaAdmin><ListaAlunos /></RotaAdmin>} />
         <Route path="/anamneses-lista" element={<RotaAdmin><ListaAnamneses /></RotaAdmin>} />
         <Route path="/anamnese" element={<RotaAdmin><Anamnese /></RotaAdmin>} />
+        
+        {/* NOVAS ROTAS DE ADMINISTRAÇÃO (Fases 3 e 4) */}
+        <Route path="/avaliacao" element={<RotaAdmin><AvaliacaoFisica /></RotaAdmin>} />
+        <Route path="/carta-trunfo" element={<RotaAdmin><GeradorCartaTrunfo /></RotaAdmin>} />
         
         {/* Rotas Protegidas para Alunos Comuns */}
         <Route path="/agendar" element={sessao ? <Agendar /> : <Navigate to="/login" />} />
