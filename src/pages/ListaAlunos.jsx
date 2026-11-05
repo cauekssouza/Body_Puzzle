@@ -58,9 +58,10 @@ export default function ListaAlunos() {
     setCarregandoTreino(true);
     setAlunoTreinoNome(aluno.nome);
     
+    // ATUALIZAÇÃO AQUI: Puxando o nome do mesociclo associado
     const { data, error } = await supabase
       .from('treinos')
-      .select('*')
+      .select('*, mesociclos(nome)')
       .eq('aluno_id', aluno.id)
       .order('criado_em', { ascending: false })
       .limit(1)
@@ -137,6 +138,11 @@ export default function ListaAlunos() {
           ) : treinoSelecionado ? (
             <div>
               <h4 style={{ color: '#0056b3', marginBottom: '12px' }}>{treinoSelecionado.titulo}</h4>
+              
+              {/* ATUALIZAÇÃO AQUI: Exibindo a barra azul claro com o Mesociclo */}
+              <div style={{ background: '#e0f2fe', padding: '10px', borderRadius: '6px', marginBottom: '15px', color: '#0369a1', fontWeight: 'bold' }}>
+                📅 Mesociclo: {treinoSelecionado.mesociclos?.nome || 'Treino Avulso / Sem Mesociclo'}
+              </div>
               
               <div style={{ background: '#fff', padding: '15px', borderRadius: '6px', marginBottom: '12px', borderLeft: '4px solid #28a745' }}>
                 <strong style={{ color: '#28a745' }}>Exercícios do Dia:</strong>
