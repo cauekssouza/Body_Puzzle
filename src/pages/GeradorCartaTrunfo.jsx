@@ -25,7 +25,6 @@ function calcularNotas(avaliacao) {
       notas.resistencia = nota;
       valoresValidos.push(nota);
     } else if (parseFloat(tc6) > 0) {
-      // Previsto TC6 aproximado (se não gravado separadamente, usamos média base para o exemplo)
       const prev = 600; 
       const nota = Math.min(70, Math.round((parseFloat(tc6) / prev) * 60));
       notas.resistencia = nota;
@@ -48,7 +47,7 @@ function calcularNotas(avaliacao) {
     }
   }
 
-  // 4. FORÇA (Usando Força Relativa do Supino/Squat/Deadlift como exemplo)
+  // 4. FORÇA
   const testesForca = [];
   if (avaliacao.forca && avaliacao.massa > 0) {
     const f = avaliacao.forca;
@@ -64,7 +63,7 @@ function calcularNotas(avaliacao) {
     }
   }
 
-  // 5. MOBILIDADE (Aproximação de média de graus)
+  // 5. MOBILIDADE
   if (avaliacao.mobilidade) {
     const m = avaliacao.mobilidade;
     let soma = 0, qtd = 0;
@@ -93,7 +92,6 @@ export default function GeradorCartaTrunfo() {
   
   const cartaRef = useRef(null);
 
-  // 1. Carregar Alunos
   useEffect(() => {
     async function carregarAlunos() {
       const { data } = await supabase.from('alunos').select('id, nome').order('nome');
@@ -102,7 +100,6 @@ export default function GeradorCartaTrunfo() {
     carregarAlunos();
   }, []);
 
-  // 2. Carregar Avaliação Mais Recente do Aluno
   useEffect(() => {
     async function buscarAvaliacao() {
       if (!alunoSelecionadoId) {
@@ -129,7 +126,6 @@ export default function GeradorCartaTrunfo() {
     buscarAvaliacao();
   }, [alunoSelecionadoId]);
 
-  // 3. Função para Exportar PNG
   async function baixarCartaPNG() {
     if (!cartaRef.current) return;
     setBaixando(true);
@@ -150,19 +146,71 @@ export default function GeradorCartaTrunfo() {
     }
   }
 
-  // --- ESTILOS ---
+  // --- ESTILOS ATUALIZADOS PARA ALINHAMENTO PERFEITO ---
   const styles = {
     container: { maxWidth: '800px', margin: '40px auto', padding: '30px', background: '#fff', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.08)' },
     select: { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', marginBottom: '20px' },
     btnPrimary: { width: '100%', padding: '15px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginTop: '20px' },
     
-    // Estilos da Carta Visual
-    cartaBox: { position: 'relative', width: '400px', height: '666px', backgroundImage: 'url("/molde-carta.jpg")', backgroundSize: 'cover', backgroundPosition: 'center', margin: '0 auto', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', overflow: 'hidden', fontFamily: 'system-ui, -apple-system, sans-serif' },
-    overallNota: { position: 'absolute', top: '16.5%', right: '11%', fontSize: '42px', fontWeight: 'bold', color: '#4460B8', textAlign: 'center', width: '70px' },
-    nomeAluno: { position: 'absolute', top: '48.5%', width: '100%', textAlign: 'center', fontSize: '22px', fontWeight: 'bold', color: '#ffffff', letterSpacing: '1px', textTransform: 'uppercase' },
-    linhaAtributo: (index) => ({ position: 'absolute', top: `${55.5 + (index * 7.1)}%`, left: '12%', width: '76%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '35px' }),
-    nomeAtributo: { color: '#ffffff', fontSize: '16px', fontWeight: 'bold', marginLeft: '15px', letterSpacing: '1px' },
-    notaAtributo: { color: '#4460B8', fontSize: '20px', fontWeight: 'bold', marginRight: '15px', width: '40px', textAlign: 'center' }
+    // Coordenadas da Carta Trunfo
+    cartaBox: { 
+      position: 'relative', 
+      width: '400px', 
+      height: '650px', 
+      backgroundImage: 'url("/molde-carta.jpg")', 
+      backgroundSize: 'cover', 
+      backgroundPosition: 'center', 
+      margin: '0 auto', 
+      boxShadow: '0 10px 25px rgba(0,0,0,0.15)', 
+      overflow: 'hidden', 
+      fontFamily: 'system-ui, -apple-system, sans-serif' 
+    },
+    overallNota: { 
+      position: 'absolute', 
+      top: '11.5%', 
+      right: '4.5%', 
+      fontSize: '38px', 
+      fontWeight: '900', 
+      color: '#4460B8', 
+      textAlign: 'center', 
+      width: '65px' 
+    },
+    nomeAluno: { 
+      position: 'absolute', 
+      top: '43.2%', 
+      width: '100%', 
+      textAlign: 'center', 
+      fontSize: '24px', 
+      fontWeight: '900', 
+      color: '#ffffff', 
+      letterSpacing: '1px', 
+      textTransform: 'uppercase' 
+    },
+    linhaAtributo: (index) => ({ 
+      position: 'absolute', 
+      top: `${51.8 + (index * 7.4)}%`, 
+      left: '9%', 
+      width: '82%', 
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center', 
+      height: '32px' 
+    }),
+    nomeAtributo: { 
+      color: '#ffffff', 
+      fontSize: '15px', 
+      fontWeight: '800', 
+      marginLeft: '15px', 
+      letterSpacing: '1px' 
+    },
+    notaAtributo: { 
+      color: '#4460B8', 
+      fontSize: '22px', 
+      fontWeight: '900', 
+      width: '50px', 
+      textAlign: 'center',
+      marginRight: '2px' 
+    }
   };
 
   const alunoNomeCurto = alunos.find(a => a.id === alunoSelecionadoId)?.nome || '';
@@ -185,7 +233,6 @@ export default function GeradorCartaTrunfo() {
       {notas && (
         <div style={{ background: '#f8fafc', padding: '30px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
           
-          {/* A CARTA VISUAL (Onde o html2canvas vai tirar a foto) */}
           <div ref={cartaRef} style={styles.cartaBox}>
             <div style={styles.overallNota}>{notas.overall}</div>
             <div style={styles.nomeAluno}>{alunoNomeCurto}</div>
