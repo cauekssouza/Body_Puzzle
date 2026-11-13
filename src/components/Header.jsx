@@ -77,6 +77,7 @@ function Header({ sessao }) {
               <Link to="/dashboard">Painel</Link>
               <Link to="/anamneses-lista">Anamneses</Link>
               <Link to="/prescrever-treino">Prescrever</Link>
+              <Link to="/biblioteca">Biblioteca</Link>
               <Link to="/cadastro">Cadastrar</Link>
               <Link to="/alunos">Alunos</Link>
               {/* NOVOS LINKS DA METODOLOGIA */}

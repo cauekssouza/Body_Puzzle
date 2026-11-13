@@ -15,6 +15,7 @@ import Agendar from './pages/Agendar'
 import Desenvolvedor from './pages/Desenvolvedor'
 import CadastroAluno from './pages/CadastroAluno'
 import ListaAlunos from './pages/ListaAlunos' 
+import PerfilAluno from './pages/PerfilAluno'
 import Anamnese from './pages/Anamnese'
 import ListaAnamneses from './pages/ListaAnamneses'
 import Login from './pages/Login'
@@ -23,6 +24,7 @@ import Dashboard from './pages/Dashboard'
 import PrescricaoTreino from './pages/PrescricaoTreino'
 import MeuTreino from './pages/MeuTreino'
 import RotaAdmin from './components/RotaAdmin'
+import Biblioteca from './pages/Biblioteca'
 import './components/Sections.css'
 
 // NOVOS IMPORTS DA METODOLOGIA
@@ -70,7 +72,9 @@ function App() {
         {/* Rotas Protegidas Exclusivas para Administradores (Protegidas pelo RotaAdmin) */}
         <Route path="/dashboard" element={<RotaAdmin><Dashboard /></RotaAdmin>} />
         <Route path="/prescrever-treino" element={<RotaAdmin><PrescricaoTreino /></RotaAdmin>} />
+        <Route path="/biblioteca" element={<RotaAdmin><Biblioteca /></RotaAdmin>} />
         <Route path="/alunos" element={<RotaAdmin><ListaAlunos /></RotaAdmin>} />
+        <Route path="/alunos/:id" element={<RotaAdmin><PerfilAluno /></RotaAdmin>} />
         <Route path="/anamneses-lista" element={<RotaAdmin><ListaAnamneses /></RotaAdmin>} />
         <Route path="/anamnese" element={<RotaAdmin><Anamnese /></RotaAdmin>} />
         
