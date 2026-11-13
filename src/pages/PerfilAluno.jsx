@@ -72,6 +72,23 @@ function somarMeses(dataStr, meses) {
   return d.toLocaleDateString('pt-BR');
 }
 
+// Converte "11/2026" (banco) -> "2026-11" (input type="month")
+function refParaInputMonth(refStr) {
+  if (!refStr) return '';
+  if (refStr.includes('-')) return refStr.slice(0, 7);
+  const [mes, ano] = refStr.split('/');
+  if (!mes || !ano) return '';
+  return `${ano}-${mes.padStart(2, '0')}`;
+}
+
+// Converte "2026-11" (input type="month") -> "11/2026" (banco)
+function inputMonthParaRef(monthStr) {
+  if (!monthStr) return '';
+  const [ano, mes] = monthStr.split('-');
+  if (!ano || !mes) return monthStr;
+  return `${mes}/${ano}`;
+}
+
 export default function PerfilAluno() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -100,7 +117,7 @@ export default function PerfilAluno() {
   const [modalPagAberto, setModalPagAberto] = useState(false);
   const [editPagId, setEditPagId] = useState(null);
   const [formPag, setFormPag] = useState({
-    referencia: `${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`,
+    referencia: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
     valor: '',
     data_pagamento: new Date().toISOString().split('T')[0],
     forma: 'Pix',
@@ -134,7 +151,7 @@ export default function PerfilAluno() {
   function abrirModalNovoPagamento() {
     setEditPagId(null);
     setFormPag({
-      referencia: `${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`,
+      referencia: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
       valor: aluno?.valor_mensal ?? '',
       data_pagamento: new Date().toISOString().split('T')[0],
       forma: 'Pix',
@@ -146,7 +163,7 @@ export default function PerfilAluno() {
   function abrirModalEditarPagamento(pag) {
     setEditPagId(pag.id);
     setFormPag({
-      referencia: pag.referencia,
+      referencia: refParaInputMonth(pag.referencia),
       valor: pag.valor,
       data_pagamento: pag.data_pagamento,
       forma: pag.forma,
@@ -161,7 +178,7 @@ export default function PerfilAluno() {
 
     const payload = {
       aluno_id: id,
-      referencia: formPag.referencia,
+      referencia: inputMonthParaRef(formPag.referencia),
       valor: Number(formPag.valor),
       data_pagamento: formPag.data_pagamento,
       forma: formPag.forma,
@@ -754,8 +771,8 @@ export default function PerfilAluno() {
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '4px' }}>Referência (Mês/Ano) *</label>
                 <input
+                  type="month"
                   required
-                  placeholder="Ex: 11/2026"
                   style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
                   value={formPag.referencia}
                   onChange={(e) => setFormPag({ ...formPag, referencia: e.target.value })}
