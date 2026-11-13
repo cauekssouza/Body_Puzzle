@@ -75,6 +75,8 @@ const formInicial = {
   midia_url: '',
 };
 
+const normalizarTraco = (str) => (str ? String(str).replace(/[–—]/g, '-').trim() : '');
+
 // Parser simples de CSV respeitando aspas
 function parseCSV(texto) {
   const linhas = [];
@@ -143,8 +145,13 @@ export default function Biblioteca() {
     if (error) {
       window.alert('Erro ao carregar biblioteca: ' + error.message);
     } else {
+      const normalizados = (data || []).map((ex) => ({
+        ...ex,
+        padrao: normalizarTraco(ex.padrao),
+        subpadrao: ex.subpadrao ? normalizarTraco(ex.subpadrao) : null,
+      }));
       // Ordenação padrão: padrão -> subpadrão -> nível -> ordem -> nome (Seção 6 Passo 3)
-      const ordenados = (data || []).sort((a, b) => {
+      const ordenados = normalizados.sort((a, b) => {
         const cmpPadrao = (a.padrao || '').localeCompare(b.padrao || '');
         if (cmpPadrao !== 0) return cmpPadrao;
 
@@ -195,8 +202,8 @@ export default function Biblioteca() {
 
         registros.push({
           nome: obj.nome.trim(),
-          padrao: obj.padrao.trim(),
-          subpadrao: obj.subpadrao ? obj.subpadrao.trim() : null,
+          padrao: normalizarTraco(obj.padrao),
+          subpadrao: obj.subpadrao ? normalizarTraco(obj.subpadrao) : null,
           nivel: obj.nivel !== '' && !Number.isNaN(Number(obj.nivel)) ? Number(obj.nivel) : null,
           ordem: obj.ordem !== '' && !Number.isNaN(Number(obj.ordem)) ? Number(obj.ordem) : null,
           tipo: obj.tipo ? obj.tipo.trim() : 'Força',

@@ -2,12 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/superbase';
 import html2canvas from 'html2canvas';
 import { calcularCarta } from '../utils/cartaTrunfo';
+import { abrirLaudoPDF } from '../utils/gerarLaudoPDF';
 
 export default function MeuTreino() {
   const [alunoId, setAlunoId] = useState(null);
   const [alunoNome, setAlunoNome] = useState('');
   const [treinos, setTreinos] = useState([]);
   const [avaliacaoAtual, setAvaliacaoAtual] = useState(null);
+  const [avaliacaoAnterior, setAvaliacaoAnterior] = useState(null);
+  const [cartaCalculada, setCartaCalculada] = useState(null);
   const [notas, setNotas] = useState(null);
   const [baixando, setBaixando] = useState(false);
   const [carregando, setCarregando] = useState(true);
@@ -45,16 +48,19 @@ export default function MeuTreino() {
 
     if (treinosData) setTreinos(treinosData);
 
-    const { data: avaliacaoData } = await supabase
+    const { data: avaliacoesData } = await supabase
       .from('avaliacoes')
       .select('*')
       .eq('aluno_id', id)
       .order('data_avaliacao', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(2);
+
+    const avaliacaoData = avaliacoesData?.[0] || null;
+    const avaliacaoAnt = avaliacoesData?.[1] || null;
 
     if (avaliacaoData) {
       setAvaliacaoAtual(avaliacaoData);
+      setAvaliacaoAnterior(avaliacaoAnt);
       const resultado = avaliacaoData.notas_carta?.atributos
         ? avaliacaoData.notas_carta
         : calcularCarta({
@@ -65,6 +71,7 @@ export default function MeuTreino() {
             ...(avaliacaoData.resistencia || {}),
           });
 
+      setCartaCalculada(resultado);
       setNotas({
         forca: resultado.atributos.forca ?? '-',
         mobilidade: resultado.atributos.mobilidade ?? '-',
@@ -175,6 +182,27 @@ export default function MeuTreino() {
 
           <button onClick={baixarCartaPNG} disabled={baixando} style={styles.btnPrimary}>
             {baixando ? 'A gerar imagem...' : '📸 Guardar a minha Carta (PNG)'}
+          </button>
+          <button
+            onClick={() =>
+              abrirLaudoPDF({
+                aluno: { id: alunoId, nome: alunoNome },
+                avaliacao: avaliacaoAtual,
+                avaliacaoAnterior,
+                carta: cartaCalculada,
+                secoesVisiveis: {
+                  forca: true,
+                  potencia: true,
+                  mobilidade: true,
+                  resistencia: true,
+                  fitness: true,
+                  movimento: true,
+                },
+              })
+            }
+            style={{ ...styles.btnPrimary, background: '#2DAFAB', marginTop: '12px' }}
+          >
+            📄 Baixar avaliação (PDF)
           </button>
         </div>
       ) : (

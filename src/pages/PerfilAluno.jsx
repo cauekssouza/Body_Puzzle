@@ -304,6 +304,39 @@ export default function PerfilAluno() {
     { id: 'pagamentos', label: 'Pagamentos' },
   ];
 
+  function renderBadgeTriagemAluno() {
+    if (!anamnese) return null;
+    if (anamnese.liberacao_medica) {
+      const dt = anamnese.data_liberacao
+        ? ` em ${new Date(`${anamnese.data_liberacao}T00:00:00`).toLocaleDateString('pt-BR')}`
+        : '';
+      return (
+        <span style={{ background: '#dcfce7', color: '#166534', padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 'bold' }}>
+          🟢 Liberado pelo médico{dt}
+        </span>
+      );
+    }
+    if (anamnese.situacao_triagem === 'vermelho') {
+      return (
+        <span style={{ background: '#fee2e2', color: '#991b1b', padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 'bold' }}>
+          🔴 Encaminhar ao médico
+        </span>
+      );
+    }
+    if (anamnese.situacao_triagem === 'laranja') {
+      return (
+        <span style={{ background: '#ffedd5', color: '#9a3412', padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 'bold' }}>
+          🟠 Só com liberação médica
+        </span>
+      );
+    }
+    return (
+      <span style={{ background: '#dcfce7', color: '#166534', padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 'bold' }}>
+        🟢 Liberado
+      </span>
+    );
+  }
+
   return (
     <div style={st.container}>
       {/* CABEÇALHO FIXO */}
@@ -325,6 +358,7 @@ export default function PerfilAluno() {
               >
                 {aluno.ativo === false ? 'Inativo' : 'Ativo'}
               </span>
+              {renderBadgeTriagemAluno()}
             </div>
             <div style={{ fontSize: '14px', color: '#475569', marginTop: '5px' }}>
               <strong>Idade:</strong> {idadeAtual !== null ? `${idadeAtual} anos` : '-'} |{' '}
@@ -443,7 +477,15 @@ export default function PerfilAluno() {
           {anamnese ? (
             <div style={{ lineHeight: '1.7', fontSize: '14.5px' }}>
               <p><strong>Última atualização:</strong> {new Date(anamnese.atualizado_em || anamnese.criado_em).toLocaleDateString('pt-BR')}</p>
-              <p><strong>Situação da Triagem:</strong> {anamnese.liberacao_medica ? 'Liberado pelo médico' : anamnese.situacao_triagem?.toUpperCase() || '-'}</p>
+              <p><strong>Situação da Triagem:</strong> {renderBadgeTriagemAluno()}</p>
+              {anamnese.anexo_liberacao && (
+                <p>
+                  <strong>Anexo da Liberação Médica:</strong>{' '}
+                  <a href={anamnese.anexo_liberacao} target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontWeight: 'bold' }}>
+                    Abrir documento anexado ↗
+                  </a>
+                </p>
+              )}
               <p><strong>Condições Médicas:</strong> {anamnese.condicoes_medicas || '-'}</p>
               <p><strong>Gatilhos Sensoriais / Cuidados:</strong> {anamnese.gatilhos_sensoriais || '-'}</p>
               <p><strong>Medicamentos:</strong> {anamnese.medicamentos || '-'}</p>
