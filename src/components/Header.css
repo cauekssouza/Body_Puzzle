@@ -1,96 +1,134 @@
+/* ==========================================================================
+   BODY PUZZLE — HEADER & NAVEGAÇÃO DE GESTÃO
+   ========================================================================== */
+
 .header {
   position: sticky;
   top: 0;
-  z-index: 20;
-  background: rgba(255, 255, 255, 0.95);
+  z-index: 900;
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--line, #eaeaea);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+  padding: 10px 0;
 }
 
 .header-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding-block: 10px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
+/* Marca / Logo */
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 10px;
   text-decoration: none;
-  color: var(--ink, #333);
-  flex-shrink: 0;
+  color: #0f172a;
+  line-height: 1.1;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  transition: opacity 0.2s ease;
+}
+
+.brand:hover {
+  opacity: 0.85;
 }
 
 .brand b {
-  font-family: var(--display, sans-serif);
+  color: #4460B8;
   font-weight: 900;
-  font-size: 1.15rem;
-  line-height: 0.9;
-  text-transform: uppercase;
-  letter-spacing: -0.5px;
 }
 
-.header-nav { 
-  display: flex; 
+/* Navegação Principal */
+.header-nav {
+  display: flex;
   align-items: center;
-  gap: 0.8rem; 
-  font-size: 0.8rem; 
-  font-weight: 600; 
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.header-nav a { 
-  text-decoration: none; 
-  color: var(--ink-2, #666); 
-  transition: color 0.2s ease;
-  white-space: nowrap;
+.header-nav > a {
+  text-decoration: none;
+  color: #334155;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
 }
 
-.header-nav a:hover { 
-  color: var(--ink, #000); 
+.header-nav > a:hover {
+  color: #4460B8;
+  background: #eff6ff;
 }
 
-/* Grupo de Gestão compacto com textos otimizados para caber tudo */
+/* Pílula do Menu de Gestão (Admins) */
 .admin-menu-group {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: #f8f9fa;
-  padding: 3px 8px;
-  border-radius: 6px;
-  border: 1px solid #e9ecef;
-  flex-shrink: 0;
+  gap: 6px;
+  flex-wrap: wrap;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-left: 4px solid #4460B8;
+  padding: 5px 10px;
+  border-radius: 8px;
 }
 
 .admin-badge-label {
-  font-size: 11px;
-  font-weight: bold;
-  color: #495057;
+  font-size: 12px;
+  font-weight: 800;
+  color: #4460B8;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-right: 4px;
   white-space: nowrap;
 }
 
 .admin-menu-group a {
-  font-size: 12px !important;
-  color: #0056b3 !important;
+  text-decoration: none;
+  font-size: 12.5px;
   font-weight: 600;
-}
-
-.header-cta { 
-  padding: 0.4rem 0.9rem; 
-  font-size: 0.8rem; 
-  border-radius: 6px;
+  color: #334155;
+  padding: 4px 8px;
+  border-radius: 5px;
   white-space: nowrap;
+  transition: all 0.15s ease;
 }
 
-@media (max-width: 1200px) {
-  /* Oculta os links públicos secundários em telas intermediárias para priorizar a barra de admin */
-  .header-nav > a:not(.admin-menu-group a) {
-    display: none;
+.admin-menu-group a:hover {
+  background: #4460B8;
+  color: #ffffff;
+}
+
+/* Botões de Ação (Entrar / Cadastrar / Sair) */
+.header-cta {
+  border-radius: 7px !important;
+  font-weight: 700 !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Responsividade Mobile / Tablet */
+@media (max-width: 960px) {
+  .header-inner {
+    justify-content: center;
+    gap: 12px;
   }
-}
 
-@media (max-width: 768px) {
-  .header-nav { display: none; }
+  .header-nav {
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .admin-menu-group {
+    justify-content: center;
+    width: 100%;
+  }
 }

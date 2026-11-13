@@ -1,0 +1,250 @@
+/* ==========================================================================
+   BODY PUZZLE — DESIGN SYSTEM GLOBAL (ÁREA DE GESTÃO E AVALIAÇÕES)
+   Paleta Oficial: Azul Royal (#4460B8), Turquesa (#2DAFAB), Laranja (#E17900),
+   Alerta Vermelho (#EB002E) e Ardósia (#0F172A / #F8FAFC)
+   ========================================================================== */
+
+:root {
+  --bp-primary: #4460B8;
+  --bp-primary-hover: #354c96;
+  --bp-primary-light: #eff6ff;
+  --bp-secondary: #2DAFAB;
+  --bp-secondary-hover: #238f8c;
+  --bp-secondary-light: #f0fdfa;
+  --bp-accent: #E17900;
+  --bp-accent-hover: #c26700;
+  --bp-danger: #EB002E;
+  --bp-danger-bg: #fef2f2;
+  --bp-success: #16a34a;
+  --bp-success-bg: #dcfce7;
+
+  --bp-bg-page: #f1f5f9;
+  --bp-surface: #ffffff;
+  --bp-surface-subtle: #f8fafc;
+  --bp-border: #e2e8f0;
+  --bp-border-strong: #cbd5e1;
+
+  --bp-text-main: #0f172a;
+  --bp-text-body: #334155;
+  --bp-text-muted: #64748b;
+
+  --bp-radius-sm: 6px;
+  --bp-radius-md: 10px;
+  --bp-radius-lg: 14px;
+  --bp-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.04);
+  --bp-shadow-md: 0 8px 28px rgba(15, 23, 42, 0.07);
+  --bp-shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.14);
+  --bp-transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Fundo geral mais suave para destacar os cartões brancos */
+body {
+  background-color: var(--bp-bg-page);
+  color: var(--bp-text-main);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Containers principais das telas de gestão */
+.lista-container,
+.lista-anamneses-container,
+.anamnese-container {
+  max-width: 1120px !important;
+  margin: 32px auto !important;
+  padding: 32px !important;
+  background: var(--bp-surface) !important;
+  border-radius: var(--bp-radius-lg) !important;
+  box-shadow: var(--bp-shadow-md) !important;
+  border: 1px solid var(--bp-border);
+}
+
+/* Tipografia de títulos */
+h2 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--bp-text-main);
+}
+
+h3 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Campos de formulário (Inputs, Selects, Textareas) */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select,
+textarea {
+  border: 1.5px solid var(--bp-border-strong) !important;
+  border-radius: var(--bp-radius-sm) !important;
+  background-color: var(--bp-surface) !important;
+  color: var(--bp-text-main) !important;
+  font-family: inherit;
+  transition: var(--bp-transition);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+select:focus,
+textarea:focus {
+  outline: none !important;
+  border-color: var(--bp-primary) !important;
+  box-shadow: 0 0 0 3px rgba(68, 96, 184, 0.15) !important;
+}
+
+input:disabled,
+select:disabled {
+  background-color: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+}
+
+/* Checkboxes mais visíveis e alinhados */
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--bp-primary);
+  cursor: pointer;
+}
+
+/* Botões globais com micro-interações */
+button {
+  font-family: inherit;
+  transition: var(--bp-transition);
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(0.96);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+}
+
+/* Tabelas modernas e limpas */
+table {
+  width: 100%;
+  border-collapse: separate !important;
+  border-spacing: 0;
+  border: 1px solid var(--bp-border);
+  border-radius: var(--bp-radius-md);
+  overflow: hidden;
+  background: var(--bp-surface);
+}
+
+thead th {
+  background: #f8fafc !important;
+  color: var(--bp-text-body) !important;
+  font-weight: 700 !important;
+  font-size: 12.5px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 13px 14px !important;
+  border-bottom: 2px solid var(--bp-border) !important;
+}
+
+tbody td {
+  padding: 12px 14px !important;
+  border-bottom: 1px solid var(--bp-border) !important;
+  color: var(--bp-text-body);
+  font-size: 14px;
+}
+
+tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Botões específicos das listas antigas */
+.btn-editar {
+  background: #f1f5f9 !important;
+  color: var(--bp-text-main) !important;
+  border: 1px solid var(--bp-border-strong) !important;
+  padding: 6px 12px !important;
+  border-radius: var(--bp-radius-sm) !important;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-salvar {
+  background: var(--bp-success) !important;
+  color: #fff !important;
+  border: none !important;
+  padding: 6px 12px !important;
+  border-radius: var(--bp-radius-sm) !important;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 6px;
+}
+
+.btn-cancelar {
+  background: #e2e8f0 !important;
+  color: var(--bp-text-body) !important;
+  border: none !important;
+  padding: 6px 12px !important;
+  border-radius: var(--bp-radius-sm) !important;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-deletar-anamnese {
+  background: var(--bp-danger-bg) !important;
+  color: var(--bp-danger) !important;
+  border: 1px solid #fecaca !important;
+  padding: 6px 11px !important;
+  border-radius: var(--bp-radius-sm) !important;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-deletar-anamnese:hover {
+  background: var(--bp-danger) !important;
+  color: #fff !important;
+}
+
+/* Scrollbar discreta para dropdowns e tabelas horizontais */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Responsividade Mobile */
+@media (max-width: 768px) {
+  .lista-container,
+  .lista-anamneses-container,
+  .anamnese-container {
+    margin: 16px !important;
+    padding: 18px !important;
+  }
+
+  thead th,
+  tbody td {
+    padding: 9px 10px !important;
+    font-size: 13px !important;
+  }
+}

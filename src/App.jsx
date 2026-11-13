@@ -26,6 +26,7 @@ import MeuTreino from './pages/MeuTreino'
 import RotaAdmin from './components/RotaAdmin'
 import Biblioteca from './pages/Biblioteca'
 import './components/Sections.css'
+import './styles/gestao.css'
 
 // NOVOS IMPORTS DA METODOLOGIA
 import AvaliacaoFisica from './pages/AvaliacaoFisica'
