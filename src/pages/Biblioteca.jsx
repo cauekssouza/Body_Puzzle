@@ -10,6 +10,8 @@ export const PADROES_OPCOES = [
   'MMSS - Puxada vertical',
   'Core',
   'Potência - Saltos',
+  'Mobilidade',
+  'Calistenia',
 ];
 
 export const SUBPADROES_POR_PADRAO = {
@@ -25,9 +27,27 @@ export const SUBPADROES_POR_PADRAO = {
     'Mix - contínuos',
     'Drop jumps',
   ],
+  Mobilidade: [
+    'Tornozelo',
+    'Joelho',
+    'Quadril',
+    'Coluna Torácica',
+    'Ombro',
+    'Punho',
+    'Cadeia Posterior / Isquiotibiais',
+    'Global / Geral',
+  ],
+  Calistenia: [
+    'Empurrada',
+    'Puxada',
+    'Core / Estáticos',
+    'Membros Inferiores',
+    'Dinâmicos / Skills',
+    'Geral',
+  ],
 };
 
-export const TIPOS_OPCOES = ['Força', 'Pliometria', 'Balístico', 'Isometria'];
+export const TIPOS_OPCOES = ['Força', 'Pliometria', 'Balístico', 'Isometria', 'Mobilidade', 'Calistenia'];
 
 export const STATUS_OPCOES = ['Metodologia', 'Proposta (revisar)', 'Inativo'];
 
