@@ -144,7 +144,71 @@ export default function MeuTreino() {
                 📅 Mesociclo: {treino.mesociclos.nome}
               </div>
             )}
-            <div style={styles.exerciciosTexto}>{treino.exercicios}</div>
+            {Array.isArray(treino.itens_estruturados) && treino.itens_estruturados.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {treino.itens_estruturados.map((item, idx) =>
+                  item.tipo === 'cardio' ? (
+                    <div
+                      key={item.id_unico || idx}
+                      style={{
+                        background: '#f0fdfa',
+                        border: '1px solid #99f6e4',
+                        borderLeft: '6px solid #2DAFAB',
+                        borderRadius: '8px',
+                        padding: '12px 14px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                        <span style={{ background: '#2DAFAB', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '999px' }}>
+                          🫀 CARDIO
+                        </span>
+                        <strong style={{ color: '#0f766e', fontSize: '14.5px' }}>
+                          [Bloco {item.bloco || '1'}] {item.titulo || 'Bloco Cardiorrespiratório'}
+                        </strong>
+                        {item.duracao_min && (
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f766e', background: '#ccfbf1', padding: '2px 7px', borderRadius: '6px' }}>
+                            ⏱️ {item.duracao_min} min
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ whiteSpace: 'pre-wrap', fontSize: '13.5px', color: '#134e4a', lineHeight: '1.5' }}>
+                        {item.descricao}
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      key={item.id_unico || idx}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderLeft: '4px solid #4460B8',
+                        borderRadius: '6px',
+                        padding: '10px 12px',
+                      }}
+                    >
+                      <strong style={{ fontSize: '14px', color: '#0f172a' }}>
+                        [Bloco {item.bloco || '1'}] • {item.nome} ({item.equipamento || 'Livre'})
+                      </strong>
+                      <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px' }}>
+                        {item.series}x{item.repeticoes} | Carga: {item.carga && item.carga !== '-' ? `${item.carga}kg` : '-'} | Intervalo: {item.intervalo || '-'}
+                      </div>
+                      {item.pontos_atencao && (
+                        <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '2px' }}>
+                          💡 Dica: {item.pontos_atencao}
+                        </div>
+                      )}
+                      {item.observacao && (
+                        <div style={{ fontSize: '12.5px', color: '#334155', marginTop: '2px' }}>
+                          📝 Obs: {item.observacao}
+                        </div>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
+            ) : (
+              <div style={styles.exerciciosTexto}>{treino.exercicios}</div>
+            )}
           </div>
         ))
       ) : (
