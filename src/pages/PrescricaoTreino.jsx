@@ -4,6 +4,9 @@ import { supabase } from '../lib/superbase';
 import { PADROES_OPCOES, TIPOS_OPCOES } from './Biblioteca';
 import {
   normalizarTexto,
+  normalizarBloco,
+  ordenarItensTreinoPorBloco,
+  extrairDuracaoAquecimento,
   formatarTextoTreino,
   clonarItensTreino,
   salvarItensNaTabelaItensTreino,
@@ -61,11 +64,12 @@ export default function PrescricaoTreino() {
   const [duplicandoMeso, setDuplicandoMeso] = useState(false);
 
   const [titulo, setTitulo] = useState('');
+  const [duracaoAquecimentoMin, setDuracaoAquecimentoMin] = useState('');
   const [todosExercicios, setTodosExercicios] = useState([]);
   const [biblioteca, setBiblioteca] = useState([]);
   const [carregandoBib, setCarregandoBib] = useState(true);
 
-  // Pesquisa e Autocomplete (Erro 2.3)
+  // Pesquisa e Autocomplete
   const [termoPesquisa, setTermoPesquisa] = useState('');
   const [mostrarDropdown, setMostrarDropdown] = useState(false);
   const [exercicioSelecionadoId, setExercicioSelecionadoId] = useState('');
@@ -80,13 +84,18 @@ export default function PrescricaoTreino() {
     tipo: 'Força',
   });
 
-  // Campos do Exercício no Treino
+  // Campos do Exercício no Treino (Seção 7: Aquecimento = '0' é a primeira opção no seletor)
   const [bloco, setBloco] = useState('1');
   const [series, setSeries] = useState('');
   const [repeticoes, setRepeticoes] = useState('');
   const [carga, setCarga] = useState('');
   const [intervalo, setIntervalo] = useState('');
   const [observacaoExercicio, setObservacaoExercicio] = useState('');
+
+  // Campos de Texto Livre no Aquecimento (Seção 7)
+  const [adicionandoTextoAquecimento, setAdicionandoTextoAquecimento] = useState(false);
+  const [tituloTextoAquecimento, setTituloTextoAquecimento] = useState('');
+  const [descricaoTextoAquecimento, setDescricaoTextoAquecimento] = useState('');
 
   // Campos do Bloco Cardiorrespiratório (Melhoria 5)
   const [adicionandoCardio, setAdicionandoCardio] = useState(false);
@@ -110,7 +119,6 @@ export default function PrescricaoTreino() {
       const { data: dadosAlunos } = await supabase.from('alunos').select('id, nome, user_id').order('nome');
       if (dadosAlunos) setAlunos(dadosAlunos);
 
-      // Busca todos os exercícios da biblioteca (filtrando ativos em memória para evitar perda quando status é null)
       const { data: dadosExercicios } = await supabase.from('exercicios').select('*').order('nome');
       if (dadosExercicios) {
         setTodosExercicios(dadosExercicios);
@@ -121,7 +129,7 @@ export default function PrescricaoTreino() {
     carregarDados();
   }, []);
 
-  // Carregar Mesociclos quando seleciona o aluno
+  // Carregar Mesociclos quando seleciona o aluno (ignorando excluido_em != null - Seção 3.1)
   useEffect(() => {
     async function carregarMesociclos() {
       if (!alunoSelecionadoId) {
@@ -134,13 +142,15 @@ export default function PrescricaoTreino() {
         .select('*')
         .eq('aluno_id', alunoSelecionadoId)
         .order('data_inicio', { ascending: false });
+
       if (data) {
-        setMesociclos(data);
+        const ativos = data.filter((m) => !m.excluido_em);
+        setMesociclos(ativos);
         const mesoUrl = searchParams.get('mesocicloId');
-        if (mesoUrl && data.some((m) => String(m.id) === String(mesoUrl))) {
+        if (mesoUrl && ativos.some((m) => String(m.id) === String(mesoUrl))) {
           setMesocicloSelecionadoId(mesoUrl);
-        } else if (data.length > 0 && !mesocicloSelecionadoId) {
-          const ativo = data.find((m) => m.status === 'Ativo') || data[0];
+        } else if (ativos.length > 0 && !mesocicloSelecionadoId) {
+          const ativo = ativos.find((m) => m.status === 'Ativo') || ativos[0];
           setMesocicloSelecionadoId(ativo.id);
         }
       }
@@ -148,7 +158,7 @@ export default function PrescricaoTreino() {
     carregarMesociclos();
   }, [alunoSelecionadoId]);
 
-  // Quando muda aluno de origem na cópia de mesociclo, ajusta cargas padrão e carrega mesociclos dele
+  // Quando muda aluno de origem na cópia de mesociclo, ajusta cargas padrão e carrega mesociclos ativos dele
   useEffect(() => {
     async function carregarMesosOrigem() {
       if (!alunoOrigemMesoId) {
@@ -156,7 +166,6 @@ export default function PrescricaoTreino() {
         setMesocicloOrigemId('');
         return;
       }
-      // Mesmo aluno -> traz cargas por padrão; outro aluno -> sem cargas por padrão
       setManterCargasMeso(String(alunoOrigemMesoId) === String(alunoSelecionadoId));
 
       const { data } = await supabase
@@ -164,15 +173,17 @@ export default function PrescricaoTreino() {
         .select('*')
         .eq('aluno_id', alunoOrigemMesoId)
         .order('data_inicio', { ascending: false });
-      setMesociclosOrigem(data || []);
-      setMesocicloOrigemId(data?.[0]?.id || '');
+
+      const ativos = (data || []).filter((m) => !m.excluido_em);
+      setMesociclosOrigem(ativos);
+      setMesocicloOrigemId(ativos?.[0]?.id || '');
     }
     if (copiarDeExistente) {
       carregarMesosOrigem();
     }
   }, [alunoOrigemMesoId, copiarDeExistente, alunoSelecionadoId]);
 
-  // Quando muda aluno de origem ao importar treino, ajusta cargas padrão e busca treinos dele
+  // Quando muda aluno de origem ao importar treino, ajusta cargas padrão e busca treinos ativos dele
   useEffect(() => {
     async function carregarTreinosOrigem() {
       if (!alunoOrigemTreinoId) {
@@ -184,11 +195,13 @@ export default function PrescricaoTreino() {
 
       const { data } = await supabase
         .from('treinos')
-        .select('*, mesociclos(nome, data_inicio)')
+        .select('*, mesociclos(nome, data_inicio, excluido_em)')
         .eq('aluno_id', alunoOrigemTreinoId)
         .order('criado_em', { ascending: false });
-      setTreinosOrigemLista(data || []);
-      setTreinoOrigemSelecionadoId(data?.[0]?.id || '');
+
+      const ativos = (data || []).filter((t) => !t.excluido_em && !t.mesociclos?.excluido_em);
+      setTreinosOrigemLista(ativos);
+      setTreinoOrigemSelecionadoId(ativos?.[0]?.id || '');
     }
     if (painelImportarTreino) {
       carregarTreinosOrigem();
@@ -279,7 +292,7 @@ export default function PrescricaoTreino() {
     }
   }
 
-  // Importar treino para a tela de edição ou salvar direto no mesociclo (Melhoria 4)
+  // Importar treino para a tela de edição ou salvar direto no mesociclo (Melhoria 4 + Seção 7 Aquecimento)
   async function handleExecutarImportacaoTreino(salvarDiretoNoBanco = false) {
     const treinoOrig = treinosOrigemLista.find((t) => String(t.id) === String(treinoOrigemSelecionadoId));
     if (!treinoOrig) return window.alert('Selecione um treino para importar.');
@@ -309,11 +322,12 @@ export default function PrescricaoTreino() {
         setImportandoTreino(false);
       }
     } else {
-      // Carrega na tela de prescrição para o professor editar antes de salvar
       const itensOrig = Array.isArray(treinoOrig.itens_estruturados) ? treinoOrig.itens_estruturados : [];
+      const durAq = extrairDuracaoAquecimento(treinoOrig);
       const { itensNovos, exerciciosInativos } = clonarItensTreino(itensOrig, manterCargasTreino, todosExercicios);
       setTitulo(treinoOrig.titulo ? `${treinoOrig.titulo}` : 'Treino Importado');
-      setListaExerciciosTreino(itensNovos);
+      setDuracaoAquecimentoMin(durAq ? String(durAq) : '');
+      setListaExerciciosTreino(ordenarItensTreinoPorBloco(itensNovos));
       setPainelImportarTreino(false);
 
       if (exerciciosInativos.length > 0) {
@@ -373,21 +387,38 @@ export default function PrescricaoTreino() {
     }
   }
 
-  // Erro 2.3: Busca parcial sem diferenciar maiúsculas ou acentos, a partir de 2 letras, até 15 resultados ativos
+  // Seção 7: Ao buscar exercício dentro do bloco Aquecimento (bloco === '0'),
+  // priorizar no topo os exercícios do padrão Mobilidade, permitindo escolher qualquer exercício da Biblioteca.
+  const isBlocoAquecimento = bloco === '0';
   const termoNormalizado = normalizarTexto(termoPesquisa);
-  const buscaAtiva = termoPesquisa.trim().length >= 2;
+  const buscaAtiva = termoPesquisa.trim().length >= 2 || (isBlocoAquecimento && termoPesquisa.trim().length === 0);
 
-  const exerciciosFiltrados = buscaAtiva
-    ? biblioteca
-        .filter(
-          (ex) =>
-            ex.status !== 'Inativo' &&
-            (normalizarTexto(ex.nome).includes(termoNormalizado) ||
-              normalizarTexto(ex.padrao).includes(termoNormalizado) ||
-              normalizarTexto(ex.subpadrao).includes(termoNormalizado))
-        )
-        .slice(0, 15)
-    : [];
+  const exerciciosFiltrados = (() => {
+    if (!buscaAtiva) return [];
+    const candidatos = biblioteca.filter((ex) => {
+      if (ex.status === 'Inativo') return false;
+      if (!termoNormalizado) {
+        // Quando está no bloco Aquecimento e focou na busca vazia, mostra Mobilidade primeiro
+        return ex.padrao === 'Mobilidade' || ex.tipo === 'Mobilidade';
+      }
+      return (
+        normalizarTexto(ex.nome).includes(termoNormalizado) ||
+        normalizarTexto(ex.padrao).includes(termoNormalizado) ||
+        normalizarTexto(ex.subpadrao).includes(termoNormalizado)
+      );
+    });
+
+    if (isBlocoAquecimento) {
+      candidatos.sort((a, b) => {
+        const mobA = a.padrao === 'Mobilidade' || a.tipo === 'Mobilidade' ? 0 : 1;
+        const mobB = b.padrao === 'Mobilidade' || b.tipo === 'Mobilidade' ? 0 : 1;
+        if (mobA !== mobB) return mobA - mobB;
+        return (a.nome || '').localeCompare(b.nome || '');
+      });
+    }
+
+    return candidatos.slice(0, 15);
+  })();
 
   function selecionarExercicio(ex) {
     setExercicioSelecionadoId(ex.id);
@@ -402,9 +433,9 @@ export default function PrescricaoTreino() {
     setMostrarDropdown(false);
     setNovoEx({
       nome: termoPesquisa.trim(),
-      padrao: PADROES_OPCOES[0],
+      padrao: isBlocoAquecimento ? 'Mobilidade' : PADROES_OPCOES[0],
       nivel: '',
-      tipo: 'Força',
+      tipo: isBlocoAquecimento ? 'Mobilidade' : 'Força',
     });
     setCriandoExercicioRapido(true);
   }
@@ -445,8 +476,8 @@ export default function PrescricaoTreino() {
 
   function handleAdicionarALista(e) {
     e.preventDefault();
-    if (!exercicioSelecionadoId || !series || !repeticoes || !bloco) {
-      return window.alert('Selecione um exercício da Biblioteca e preencha Bloco, Séries e Repetições.');
+    if (!exercicioSelecionadoId || !series || !repeticoes || bloco === '') {
+      return window.alert('Selecione um exercício da Biblioteca e preencha Bloco, Séries e Repetições/Tempo.');
     }
 
     const equipTexto =
@@ -458,11 +489,13 @@ export default function PrescricaoTreino() {
       id_unico: Date.now() + Math.floor(Math.random() * 1000),
       tipo: 'exercicio',
       exercicio_id: detalhesExercicio.id,
-      bloco,
+      bloco: normalizarBloco(bloco),
       nome: detalhesExercicio.nome,
       padrao: detalhesExercicio.padrao,
+      subpadrao: detalhesExercicio.subpadrao || null,
       nivel: detalhesExercicio.nivel,
       equipamento: equipTexto,
+      midia_url: detalhesExercicio.midia_url || null,
       series,
       repeticoes,
       carga: carga || '-',
@@ -472,7 +505,7 @@ export default function PrescricaoTreino() {
       exercicio_inativo: detalhesExercicio.status === 'Inativo',
     };
 
-    setListaExerciciosTreino((prev) => [...prev, novoExercicio]);
+    setListaExerciciosTreino((prev) => ordenarItensTreinoPorBloco([...prev, novoExercicio]));
 
     setExercicioSelecionadoId('');
     setDetalhesExercicio(null);
@@ -482,6 +515,29 @@ export default function PrescricaoTreino() {
     setCarga('');
     setIntervalo('');
     setObservacaoExercicio('');
+  }
+
+  // Seção 7: Adicionar item de texto livre no Aquecimento (ex: "5 min de bike leve")
+  function handleAdicionarTextoAquecimento(e) {
+    e.preventDefault();
+    if (!descricaoTextoAquecimento.trim()) {
+      return window.alert('Preencha o texto livre do aquecimento (ex: "5 min de bike leve").');
+    }
+
+    const novoTextoAq = {
+      id_unico: Date.now() + Math.floor(Math.random() * 1000),
+      tipo: 'texto',
+      exercicio_id: null,
+      bloco: '0',
+      titulo: tituloTextoAquecimento.trim() || 'Aquecimento (Texto Livre)',
+      descricao: descricaoTextoAquecimento,
+      duracao_min: null,
+    };
+
+    setListaExerciciosTreino((prev) => ordenarItensTreinoPorBloco([...prev, novoTextoAq]));
+    setTituloTextoAquecimento('');
+    setDescricaoTextoAquecimento('');
+    setAdicionandoTextoAquecimento(false);
   }
 
   // Melhoria 5: Adicionar bloco cardiorrespiratório de texto livre
@@ -497,11 +553,11 @@ export default function PrescricaoTreino() {
       exercicio_id: null,
       bloco: blocoCardio || '1',
       titulo: tituloCardio.trim() || null,
-      descricao: descricaoCardio, // preserva quebras de linha
+      descricao: descricaoCardio,
       duracao_min: duracaoCardio !== '' && !Number.isNaN(Number(duracaoCardio)) ? Number(duracaoCardio) : null,
     };
 
-    setListaExerciciosTreino((prev) => [...prev, novoCardio]);
+    setListaExerciciosTreino((prev) => ordenarItensTreinoPorBloco([...prev, novoCardio]));
     setTituloCardio('');
     setDescricaoCardio('');
     setDuracaoCardio('');
@@ -514,7 +570,7 @@ export default function PrescricaoTreino() {
     const copia = [...listaExerciciosTreino];
     const [removido] = copia.splice(index, 1);
     copia.splice(novoIndex, 0, removido);
-    setListaExerciciosTreino(copia);
+    setListaExerciciosTreino(ordenarItensTreinoPorBloco(copia));
   }
 
   function removerDaLista(idParaRemover) {
@@ -525,63 +581,82 @@ export default function PrescricaoTreino() {
     e.preventDefault();
     if (!alunoSelecionadoId) return window.alert('Selecione um aluno!');
     if (!mesocicloSelecionadoId) return window.alert('Selecione ou crie um Mesociclo primeiro!');
-    if (listaExerciciosTreino.length === 0) return window.alert('Adicione pelo menos um exercício ou bloco cardio!');
+    if (listaExerciciosTreino.length === 0) return window.alert('Adicione pelo menos um exercício ou bloco ao treino!');
 
     const alunoObj = alunos.find((a) => String(a.id) === String(alunoSelecionadoId));
-    const itensComOrdem = listaExerciciosTreino.map((item, idx) => ({
+    const durAqNum =
+      duracaoAquecimentoMin !== '' && !Number.isNaN(Number(duracaoAquecimentoMin))
+        ? Number(duracaoAquecimentoMin)
+        : null;
+
+    const itensOrdenados = ordenarItensTreinoPorBloco(listaExerciciosTreino).map((item, idx) => ({
       ...item,
+      bloco: normalizarBloco(item.bloco),
       ordem: idx + 1,
+      ...(normalizarBloco(item.bloco) === '0' && durAqNum ? { duracao_aquecimento_min: durAqNum } : {}),
     }));
 
-    const textoTreino = formatarTextoTreino(itensComOrdem);
+    const textoTreino = formatarTextoTreino(itensOrdenados, durAqNum);
 
-    const { data: treinoSalvo, error } = await supabase
+    const payloadInsert = {
+      aluno_id: alunoSelecionadoId,
+      user_id: alunoObj?.user_id || null,
+      mesociclo_id: mesocicloSelecionadoId,
+      titulo: titulo.trim() || 'Treino',
+      exercicios: textoTreino,
+      itens_estruturados: itensOrdenados,
+      duracao_aquecimento_min: durAqNum,
+      observacoes_sensoriais: 'Criado pela Biblioteca Body Puzzle',
+    };
+
+    let { data: treinoSalvo, error } = await supabase
       .from('treinos')
-      .insert([
-        {
-          aluno_id: alunoSelecionadoId,
-          user_id: alunoObj?.user_id || null,
-          mesociclo_id: mesocicloSelecionadoId,
-          titulo: titulo.trim() || 'Treino',
-          exercicios: textoTreino,
-          itens_estruturados: itensComOrdem,
-          observacoes_sensoriais: 'Criado pela Biblioteca Body Puzzle',
-        },
-      ])
+      .insert([payloadInsert])
       .select()
       .single();
+
+    if (error && error.message?.includes('duracao_aquecimento_min')) {
+      const { duracao_aquecimento_min: _omit, ...payloadSemDur } = payloadInsert;
+      const retry = await supabase.from('treinos').insert([payloadSemDur]).select().single();
+      treinoSalvo = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       return window.alert('Erro ao salvar treino: ' + error.message);
     }
 
-    // Salva também na tabela itens_treino (com suporte a tipo = 'cardio' e exercicio_id anulável)
-    const { error: errItens } = await salvarItensNaTabelaItensTreino(treinoSalvo.id, itensComOrdem);
+    const { error: errItens } = await salvarItensNaTabelaItensTreino(treinoSalvo.id, itensOrdenados);
     if (errItens) {
       console.warn('Aviso ao sincronizar itens_treino:', errItens.message);
     }
 
     window.alert('Treino salvo no Mesociclo com sucesso!');
     setTitulo('');
+    setDuracaoAquecimentoMin('');
     setListaExerciciosTreino([]);
     if (searchParams.get('alunoId')) {
       navigate(`/alunos/${alunoSelecionadoId}`);
     }
   }
 
+  const temItensAquecimento = listaExerciciosTreino.some((i) => normalizarBloco(i.bloco) === '0');
+
   const styles = {
-    container: { maxWidth: '800px', margin: '40px auto', padding: '30px', background: '#ffffff', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.08)', fontFamily: 'system-ui, -apple-system, sans-serif' },
+    container: { maxWidth: '820px', margin: '40px auto', padding: '30px', background: '#ffffff', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.08)', fontFamily: 'system-ui, -apple-system, sans-serif' },
     title: { textAlign: 'center', color: '#1e293b', fontSize: '24px', fontWeight: '800', marginBottom: '25px', textTransform: 'uppercase' },
     input: { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14.5px', color: '#334155', boxSizing: 'border-box', backgroundColor: '#f8fafc', marginBottom: '12px', outline: 'none' },
     sectionBox: { background: '#f1f5f9', padding: '22px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '20px' },
     grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
-    grid4: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', marginBottom: '12px' },
+    grid4: { display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '10px', marginBottom: '12px' },
     btnPrimary: { width: '100%', padding: '15px', background: '#4460B8', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' },
     btnSecondary: { padding: '12px 20px', background: '#2DAFAB', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' },
+    btnOrange: { padding: '12px 20px', background: '#E17900', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' },
     btnOutline: { padding: '10px', background: 'transparent', color: '#4460B8', border: '1px solid #4460B8', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '12px', width: '100%' },
-    btnTealOutline: { padding: '10px 14px', background: '#f0fdfa', color: '#0f766e', border: '2px solid #2DAFAB', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' },
+    btnTealOutline: { padding: '10px 14px', background: '#f0fdfa', color: '#0f766e', border: '2px solid #2DAFAB', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13.5px' },
+    btnOrangeOutline: { padding: '10px 14px', background: '#fff7ed', color: '#9a3412', border: '2px solid #E17900', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13.5px' },
     searchContainer: { position: 'relative', marginBottom: '15px' },
-    dropdownList: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '300px', overflowY: 'auto', zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' },
+    dropdownList: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '320px', overflowY: 'auto', zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' },
     dropdownItem: { padding: '11px 14px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', fontSize: '14px', color: '#334155' },
   };
 
@@ -589,13 +664,12 @@ export default function PrescricaoTreino() {
     <div style={styles.container}>
       <h2 style={styles.title}>Prescrever Treino</h2>
 
-      {/* Alerta caso a tabela exercicios esteja vazia (Erro 2.3) */}
       {!carregandoBib && todosExercicios.length === 0 && (
         <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderLeft: '5px solid #ea580c', padding: '14px 18px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px', color: '#9a3412' }}>
           <strong>⚠️ Biblioteca de Exercícios vazia ou bloqueada pelo RLS:</strong> Nenhum exercício foi retornado do banco de dados.
           <div style={{ marginTop: '6px' }}>
-            1. Certifique-se de executar o script <code>supabase-correcoes-e-melhorias.sql</code> no SQL Editor do Supabase.<br />
-            2. Acesse a <button type="button" onClick={() => navigate('/biblioteca')} style={{ background: 'none', border: 'none', color: '#1d4ed8', textDecoration: 'underline', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}>Biblioteca de Exercícios</button> e clique em <strong>"📥 Importar CSV (168)"</strong> para importar o <code>biblioteca-exercicios.csv</code>.
+            1. Certifique-se de executar o script <code>supabase-prescricao-e-exposicao.sql</code> no SQL Editor do Supabase.<br />
+            2. Acesse a <button type="button" onClick={() => navigate('/biblioteca')} style={{ background: 'none', border: 'none', color: '#1d4ed8', textDecoration: 'underline', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}>Biblioteca de Exercícios</button> para importar o CSV ou sincronizar Calistenia e Mobilidade.
           </div>
         </div>
       )}
@@ -684,7 +758,6 @@ export default function PrescricaoTreino() {
               )}
             </div>
 
-            {/* FORMULÁRIO DE CRIAR NOVO MESOCICLO (EM BRANCO OU COPIANDO DE ANTERIOR - MELHORIA 4) */}
             {criandoMesociclo && (
               <form
                 onSubmit={handleSalvarNovoMesociclo}
@@ -692,7 +765,6 @@ export default function PrescricaoTreino() {
               >
                 <h4 style={{ marginTop: 0, marginBottom: '12px', color: '#1e293b' }}>Criar Novo Mesociclo</h4>
 
-                {/* Opção de copiar de mesociclo anterior */}
                 <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '14px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '13.5px', cursor: 'pointer', color: '#4460B8' }}>
                     <input
@@ -827,7 +899,6 @@ export default function PrescricaoTreino() {
               </form>
             )}
 
-            {/* PAINEL DE IMPORTAR TREINO PARA O MESOCICLO ATUAL (MELHORIA 4) */}
             {painelImportarTreino && (
               <div style={{ background: '#fff', padding: '16px', borderRadius: '8px', border: '2px solid #2DAFAB', marginBottom: '14px' }}>
                 <h4 style={{ marginTop: 0, marginBottom: '10px', color: '#0f766e' }}>📥 Importar Treino para este Mesociclo</h4>
@@ -896,29 +967,128 @@ export default function PrescricaoTreino() {
         )}
       </div>
 
-      <input
-        type="text"
-        style={styles.input}
-        placeholder="📝 Título do Treino (Ex: Treino A)"
-        value={titulo}
-        onChange={(e) => setTitulo(e.target.value)}
-      />
-
-      {/* 2. ADICIONAR EXERCÍCIOS POR BLOCO (LIGADO À BIBLIOTECA) */}
-      <div style={styles.sectionBox}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-          <h4 style={{ margin: 0 }}>+ Adicionar Exercício da Biblioteca</h4>
-          <button
-            type="button"
-            style={styles.btnTealOutline}
-            onClick={() => {
-              setAdicionandoCardio(!adicionandoCardio);
-              setBlocoCardio(bloco);
-            }}
-          >
-            {adicionandoCardio ? 'Fechar Bloco Cardio' : '🫀 + Adicionar bloco cardiorrespiratório'}
-          </button>
+      {/* TÍTULO DO TREINO E DURAÇÃO DO AQUECIMENTO */}
+      <div style={styles.grid2}>
+        <div>
+          <label style={{ fontSize: '12.5px', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '4px' }}>
+            Título do Treino *
+          </label>
+          <input
+            type="text"
+            style={styles.input}
+            placeholder="📝 Ex: Treino A"
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+          />
         </div>
+        <div>
+          <label style={{ fontSize: '12.5px', fontWeight: 'bold', color: '#E17900', display: 'block', marginBottom: '4px' }}>
+            🔥 Duração total do aquecimento em min (opcional)
+          </label>
+          <input
+            type="number"
+            min="1"
+            style={{ ...styles.input, borderColor: temItensAquecimento || isBlocoAquecimento ? '#E17900' : '#cbd5e1' }}
+            placeholder="Ex: 10 (exibido no cabeçalho do Aquecimento)"
+            value={duracaoAquecimentoMin}
+            onChange={(e) => setDuracaoAquecimentoMin(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* 2. ADICIONAR EXERCÍCIOS E BLOCOS (AQUECIMENTO #E17900, BLOCOS #4460B8, CARDIO #2DAFAB) */}
+      <div
+        style={{
+          ...styles.sectionBox,
+          borderLeft: isBlocoAquecimento ? '6px solid #E17900' : '6px solid #4460B8',
+          background: isBlocoAquecimento ? '#fff7ed' : '#f1f5f9',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+          <h4 style={{ margin: 0, color: isBlocoAquecimento ? '#9a3412' : '#1e293b' }}>
+            {isBlocoAquecimento ? '🔥 Adicionar ao Bloco de Aquecimento' : '+ Adicionar Exercício da Biblioteca'}
+          </h4>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              style={styles.btnOrangeOutline}
+              onClick={() => {
+                setBloco('0');
+                setAdicionandoTextoAquecimento(!adicionandoTextoAquecimento);
+                setAdicionandoCardio(false);
+              }}
+            >
+              {adicionandoTextoAquecimento ? 'Fechar Texto Aquecimento' : '🔥 + Texto livre no Aquecimento'}
+            </button>
+            <button
+              type="button"
+              style={styles.btnTealOutline}
+              onClick={() => {
+                setAdicionandoCardio(!adicionandoCardio);
+                setAdicionandoTextoAquecimento(false);
+                setBlocoCardio(bloco === '0' ? '1' : bloco);
+              }}
+            >
+              {adicionandoCardio ? 'Fechar Bloco Cardio' : '🫀 + Adicionar bloco cardiorrespiratório'}
+            </button>
+          </div>
+        </div>
+
+        {/* FORMULÁRIO DE TEXTO LIVRE NO AQUECIMENTO (SEÇÃO 7) */}
+        {adicionandoTextoAquecimento && (
+          <div style={{ background: '#ffffff', padding: '16px', borderRadius: '10px', border: '2px solid #E17900', marginBottom: '18px' }}>
+            <h4 style={{ marginTop: 0, marginBottom: '10px', color: '#E17900' }}>
+              🔥 Item de Texto Livre no Aquecimento (Bloco 0)
+            </h4>
+            <div style={styles.grid2}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#9a3412' }}>Título (opcional)</label>
+                <input
+                  type="text"
+                  style={{ ...styles.input, background: '#fff' }}
+                  placeholder="Ex: Ativação Geral / Bike Leve"
+                  value={tituloTextoAquecimento}
+                  onChange={(e) => setTituloTextoAquecimento(e.target.value)}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#9a3412' }}>Duração total do Aquecimento (min, opcional)</label>
+                <input
+                  type="number"
+                  min="1"
+                  style={{ ...styles.input, background: '#fff' }}
+                  placeholder="Ex: 8"
+                  value={duracaoAquecimentoMin}
+                  onChange={(e) => setDuracaoAquecimentoMin(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#9a3412', display: 'block', marginBottom: '4px' }}>
+                Descrição do aquecimento livre * (ex: &quot;5 min de bike leve&quot;)
+              </label>
+              <textarea
+                rows={3}
+                style={{ ...styles.input, background: '#fff', fontFamily: 'inherit', resize: 'vertical' }}
+                placeholder={'Ex:\n5 min de bike leve\n2x 10 liberações miofasciais'}
+                value={descricaoTextoAquecimento}
+                onChange={(e) => setDescricaoTextoAquecimento(e.target.value)}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button type="button" onClick={handleAdicionarTextoAquecimento} style={styles.btnOrange}>
+                + Inserir Texto no Aquecimento
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdicionandoTextoAquecimento(false)}
+                style={{ padding: '10px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* FORMULÁRIO DE BLOCO CARDIORRESPIRATÓRIO DE TEXTO LIVRE (MELHORIA 5) */}
         {adicionandoCardio && (
@@ -991,12 +1161,79 @@ export default function PrescricaoTreino() {
           </div>
         )}
 
-        {/* BUSCA DE EXERCÍCIOS A PARTIR DE 2 LETRAS E ATÉ 15 RESULTADOS ATIVOS (ERRO 2.3) */}
+        {/* SELETOR DE BLOCO E PARÂMETROS */}
+        <div style={styles.grid4}>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 'bold', color: isBlocoAquecimento ? '#E17900' : '#334155' }}>
+              Bloco *
+            </label>
+            <select
+              style={{
+                ...styles.input,
+                background: '#fff',
+                fontWeight: 'bold',
+                borderColor: isBlocoAquecimento ? '#E17900' : '#cbd5e1',
+                color: isBlocoAquecimento ? '#E17900' : '#334155',
+              }}
+              value={bloco}
+              onChange={(e) => setBloco(e.target.value)}
+            >
+              <option value="0">🔥 Aquecimento</option>
+              <option value="1">Bloco 1</option>
+              <option value="2">Bloco 2</option>
+              <option value="3">Bloco 3</option>
+              <option value="4">Bloco 4</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Séries *</label>
+            <input
+              type="text"
+              style={{ ...styles.input, background: '#fff' }}
+              placeholder="Ex: 2 ou 4"
+              value={series}
+              onChange={(e) => setSeries(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 'bold' }}>
+              {isBlocoAquecimento ? 'Reps ou Tempo *' : 'Repetições *'}
+            </label>
+            <input
+              type="text"
+              style={{ ...styles.input, background: '#fff' }}
+              placeholder={isBlocoAquecimento ? 'Ex: 30 s ou 10/lado' : 'Ex: 8-10'}
+              value={repeticoes}
+              onChange={(e) => setRepeticoes(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Intervalo (opcional)</label>
+            <input
+              type="text"
+              style={{ ...styles.input, background: '#fff' }}
+              placeholder="Ex: 60s"
+              value={intervalo}
+              onChange={(e) => setIntervalo(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* BUSCA DE EXERCÍCIOS (COM PRIORIDADE DE MOBILIDADE NO TOPO QUANDO BLOCO = AQUECIMENTO) */}
         <div style={styles.searchContainer}>
+          <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px', color: isBlocoAquecimento ? '#9a3412' : '#334155' }}>
+            {isBlocoAquecimento
+              ? '🔍 Buscar Exercício para o Aquecimento (exercícios de Mobilidade aparecem priorizados no topo)'
+              : '🔍 Buscar Exercício na Biblioteca'}
+          </label>
           <input
             type="text"
             style={{ ...styles.input, marginBottom: 0, background: '#fff' }}
-            placeholder="🔍 Digite pelo menos 2 letras para buscar (ex: Squat, Bulgaro)..."
+            placeholder={
+              isBlocoAquecimento
+                ? '🔍 Clique ou digite para buscar (Mobilidade priorizada no topo)...'
+                : '🔍 Digite pelo menos 2 letras para buscar (ex: Squat, Bulgaro, Front Lever)...'
+            }
             value={termoPesquisa}
             onChange={(e) => {
               setTermoPesquisa(e.target.value);
@@ -1008,7 +1245,7 @@ export default function PrescricaoTreino() {
             onBlur={() => setTimeout(() => setMostrarDropdown(false), 220)}
           />
 
-          {mostrarDropdown && termoPesquisa.trim().length > 0 && (
+          {mostrarDropdown && (termoPesquisa.trim().length > 0 || isBlocoAquecimento) && (
             <div style={styles.dropdownList}>
               {!buscaAtiva ? (
                 <div style={{ padding: '10px 14px', fontSize: '13px', color: '#64748b' }}>
@@ -1016,34 +1253,63 @@ export default function PrescricaoTreino() {
                 </div>
               ) : (
                 <>
-                  {exerciciosFiltrados.map((ex) => (
-                    <div
-                      key={ex.id}
-                      style={styles.dropdownItem}
-                      onMouseDown={() => selecionarExercicio(ex)}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
-                    >
-                      <strong>{ex.nome}</strong>{' '}
-                      <span style={{ fontSize: '12.5px', color: '#64748b' }}>
-                        — {ex.padrao} {ex.subpadrao ? `(${ex.subpadrao})` : ''} {ex.nivel ? `• N${ex.nivel}` : ''}
-                      </span>
+                  {isBlocoAquecimento && (
+                    <div style={{ padding: '6px 14px', background: '#fff7ed', color: '#9a3412', fontSize: '11.5px', fontWeight: 'bold', borderBottom: '1px solid #fed7aa' }}>
+                      🔥 Bloco de Aquecimento: exercícios de Mobilidade priorizados no topo
                     </div>
-                  ))}
+                  )}
+                  {exerciciosFiltrados.map((ex) => {
+                    const isMob = ex.padrao === 'Mobilidade' || ex.tipo === 'Mobilidade';
+                    return (
+                      <div
+                        key={ex.id}
+                        style={{
+                          ...styles.dropdownItem,
+                          background: isBlocoAquecimento && isMob ? '#fffbeb' : '#fff',
+                        }}
+                        onMouseDown={() => selecionarExercicio(ex)}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = isBlocoAquecimento && isMob ? '#fffbeb' : '#fff')
+                        }
+                      >
+                        {isBlocoAquecimento && isMob && (
+                          <span
+                            style={{
+                              background: '#E17900',
+                              color: '#fff',
+                              fontSize: '10.5px',
+                              fontWeight: 'bold',
+                              padding: '2px 6px',
+                              borderRadius: '999px',
+                              marginRight: '6px',
+                            }}
+                          >
+                            MOBILIDADE
+                          </span>
+                        )}
+                        <strong>{ex.nome}</strong>{' '}
+                        <span style={{ fontSize: '12.5px', color: '#64748b' }}>
+                          — {ex.padrao} {ex.subpadrao ? `(${ex.subpadrao})` : ''} {ex.nivel ? `• N${ex.nivel}` : ''}
+                        </span>
+                      </div>
+                    );
+                  })}
 
                   {exerciciosFiltrados.length === 0 && (
                     <div style={{ padding: '10px 14px', fontSize: '13px', color: '#64748b' }}>
-                      Nenhum exercício ativo encontrado para "{termoPesquisa.trim()}".
+                      Nenhum exercício ativo encontrado para &quot;{termoPesquisa.trim()}&quot;.
                     </div>
                   )}
 
-                  {/* Opção para criar exercício sempre no final da lista */}
-                  <div
-                    style={{ ...styles.dropdownItem, background: '#eff6ff', color: '#1d4ed8', fontWeight: 'bold' }}
-                    onMouseDown={abrirCriacaoRapida}
-                  >
-                    + Criar exercício "{termoPesquisa.trim()}"
-                  </div>
+                  {termoPesquisa.trim().length >= 2 && (
+                    <div
+                      style={{ ...styles.dropdownItem, background: '#eff6ff', color: '#1d4ed8', fontWeight: 'bold' }}
+                      onMouseDown={abrirCriacaoRapida}
+                    >
+                      + Criar exercício &quot;{termoPesquisa.trim()}&quot;
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -1091,61 +1357,75 @@ export default function PrescricaoTreino() {
           </div>
         )}
 
-        <div style={styles.grid4}>
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Bloco</label>
-            <select style={styles.input} value={bloco} onChange={(e) => setBloco(e.target.value)}>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-            </select>
-          </div>
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Séries</label>
-            <input type="text" style={styles.input} placeholder="Ex: 4" value={series} onChange={(e) => setSeries(e.target.value)} />
-          </div>
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Reps</label>
-            <input type="text" style={styles.input} placeholder="Ex: 8-10" value={repeticoes} onChange={(e) => setRepeticoes(e.target.value)} />
-          </div>
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Intervalo</label>
-            <input type="text" style={styles.input} placeholder="Ex: 60s" value={intervalo} onChange={(e) => setIntervalo(e.target.value)} />
-          </div>
-        </div>
-
         <div style={styles.grid2}>
-          <input type="text" style={styles.input} placeholder="Carga (opcional, ex: 20)" value={carga} onChange={(e) => setCarga(e.target.value)} />
-          <input type="text" style={styles.input} placeholder="Observação específica (opcional)" value={observacaoExercicio} onChange={(e) => setObservacaoExercicio(e.target.value)} />
+          <input
+            type="text"
+            style={{ ...styles.input, background: '#fff' }}
+            placeholder="Carga (opcional, ex: 20)"
+            value={carga}
+            onChange={(e) => setCarga(e.target.value)}
+          />
+          <input
+            type="text"
+            style={{ ...styles.input, background: '#fff' }}
+            placeholder="Observação específica (opcional)"
+            value={observacaoExercicio}
+            onChange={(e) => setObservacaoExercicio(e.target.value)}
+          />
         </div>
 
-        <button type="button" onClick={handleAdicionarALista} style={styles.btnSecondary}>
-          Adicionar Exercício ao Treino
+        <button
+          type="button"
+          onClick={handleAdicionarALista}
+          style={isBlocoAquecimento ? styles.btnOrange : styles.btnSecondary}
+        >
+          {isBlocoAquecimento ? '🔥 Adicionar Exercício ao Aquecimento' : 'Adicionar Exercício ao Treino'}
         </button>
       </div>
 
-      {/* 3. LISTA DO TREINO REORDENÁVEL (COM DESTAQUE VERDE-ÁGUA #2DAFAB PARA CARDIO E ALERTA DE INATIVOS) */}
+      {/* 3. LISTA DO TREINO REORDENÁVEL (AQUECIMENTO #E17900 ANTES DO BLOCO 1 #4460B8 E CARDIO #2DAFAB) */}
       {listaExerciciosTreino.length > 0 && (
         <div style={{ marginTop: '30px' }}>
-          <h4>🛒 Itens no Treino (use ⬆️ ⬇️ para reordenar):</h4>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+            <h4 style={{ margin: 0 }}>🛒 Itens no Treino (Aquecimento sempre antes dos Blocos 1, 2, 3...):</h4>
+            {temItensAquecimento && (
+              <span style={{ background: '#fff7ed', color: '#E17900', border: '1px solid #E17900', padding: '4px 10px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 'bold' }}>
+                🔥 Aquecimento{duracaoAquecimentoMin ? `: ${duracaoAquecimentoMin} min` : ' ativo'}
+              </span>
+            )}
+          </div>
+
           {listaExerciciosTreino.map((item, idx) => {
             const isCardio = item.tipo === 'cardio';
-            const isInativo = !isCardio && verificarExercicioInativo(item, todosExercicios);
+            const isAquecimento = normalizarBloco(item.bloco) === '0';
+            const isTextoLivre = item.tipo === 'texto';
+            const isInativo = !isCardio && !isTextoLivre && verificarExercicioInativo(item, todosExercicios);
+
+            const corBorda = isAquecimento
+              ? '#E17900'
+              : isCardio
+              ? '#2DAFAB'
+              : isInativo
+              ? '#ef4444'
+              : '#4460B8';
+
+            const corFundo = isAquecimento
+              ? '#fff7ed'
+              : isCardio
+              ? '#f0fdfa'
+              : isInativo
+              ? '#fef2f2'
+              : '#fff';
 
             return (
               <div
                 key={item.id_unico}
                 style={{
-                  background: isCardio ? '#f0fdfa' : isInativo ? '#fef2f2' : '#fff',
+                  background: corFundo,
                   padding: '15px',
                   borderRadius: '8px',
-                  border: isCardio ? '1px solid #99f6e4' : isInativo ? '1px solid #fecaca' : '1px solid #e2e8f0',
-                  borderLeft: isCardio
-                    ? '6px solid #2DAFAB'
-                    : isInativo
-                    ? '6px solid #ef4444'
-                    : '5px solid #4460B8',
+                  border: `1px solid ${isAquecimento ? '#fed7aa' : isCardio ? '#99f6e4' : isInativo ? '#fecaca' : '#e2e8f0'}`,
+                  borderLeft: `6px solid ${corBorda}`,
                   marginBottom: '10px',
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -1173,11 +1453,30 @@ export default function PrescricaoTreino() {
                         {item.descricao}
                       </div>
                     </>
+                  ) : isTextoLivre ? (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                        <span style={{ background: '#E17900', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '999px' }}>
+                          🔥 AQUECIMENTO (TEXTO LIVRE)
+                        </span>
+                        <strong style={{ color: '#9a3412', fontSize: '15px' }}>
+                          {item.titulo || 'Aquecimento'}
+                        </strong>
+                      </div>
+                      <div style={{ whiteSpace: 'pre-wrap', fontSize: '13.5px', color: '#7c2d12', lineHeight: '1.5' }}>
+                        {item.descricao}
+                      </div>
+                    </>
                   ) : (
                     <>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <strong style={{ color: '#0f172a' }}>
-                          [Bloco {item.bloco}] {item.nome}
+                        {isAquecimento && (
+                          <span style={{ background: '#E17900', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '999px' }}>
+                            🔥 AQUECIMENTO
+                          </span>
+                        )}
+                        <strong style={{ color: isAquecimento ? '#9a3412' : '#0f172a' }}>
+                          [{isAquecimento ? 'Aquecimento' : `Bloco ${item.bloco}`}] {item.nome}
                         </strong>
                         {isInativo && (
                           <span style={{ background: '#fee2e2', color: '#991b1b', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '999px' }}>
@@ -1186,7 +1485,7 @@ export default function PrescricaoTreino() {
                         )}
                       </div>
                       <div style={{ fontSize: '13px', color: '#64748b', marginTop: '3px' }}>
-                        {item.series}x{item.repeticoes} • Carga: {item.carga && item.carga !== '-' ? `${item.carga}kg` : '-'} • Intervalo: {item.intervalo}
+                        {item.series}x{item.repeticoes} • Carga: {item.carga && item.carga !== '-' ? `${item.carga}kg` : '-'} • Intervalo: {item.intervalo || '-'}
                       </div>
                       {item.observacao && (
                         <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '3px' }}>
@@ -1257,7 +1556,7 @@ export default function PrescricaoTreino() {
         </div>
       )}
 
-      {/* MODAL DUPLICAR MESOCICLO PARA... (MELHORIA 4) */}
+      {/* MODAL DUPLICAR MESOCICLO PARA... */}
       {modalDuplicarMeso && (
         <div
           style={{
@@ -1358,7 +1657,7 @@ export default function PrescricaoTreino() {
                   checked={manterCargasDup}
                   onChange={(e) => setManterCargasDup(e.target.checked)}
                 />
-                Manter cargas dos exercícios
+                Manter cargas dos exercícios (inclui bloco Aquecimento e duração)
               </label>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>

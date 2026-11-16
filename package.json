@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:carta": "node teste-carta.js"
+    "test:carta": "node teste-carta.js",
+    "test:prescricao": "node teste-prescricao-exposicao.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

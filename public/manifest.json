@@ -1,0 +1,22 @@
+{
+  "name": "Body Puzzle — Prescrição e Exposição de Treinos",
+  "short_name": "Body Puzzle",
+  "description": "Sistema Body Puzzle de prescrição e exposição de rotinas de treino para iPad",
+  "start_url": "/exposicao",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#f8fafc",
+  "theme_color": "#4460B8",
+  "icons": [
+    {
+      "src": "/Icone.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/Icone.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

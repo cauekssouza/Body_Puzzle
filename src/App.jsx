@@ -22,6 +22,7 @@ import Login from './pages/Login'
 import CadastroEquipe from './pages/CadastroEquipe' 
 import Dashboard from './pages/Dashboard'
 import PrescricaoTreino from './pages/PrescricaoTreino'
+import ExposicaoTreino from './pages/ExposicaoTreino'
 import MeuTreino from './pages/MeuTreino'
 import RotaAdmin from './components/RotaAdmin'
 import Biblioteca from './pages/Biblioteca'
@@ -73,6 +74,7 @@ function App() {
         {/* Rotas Protegidas Exclusivas para Administradores (Protegidas pelo RotaAdmin) */}
         <Route path="/dashboard" element={<RotaAdmin><Dashboard /></RotaAdmin>} />
         <Route path="/prescrever-treino" element={<RotaAdmin><PrescricaoTreino /></RotaAdmin>} />
+        <Route path="/exposicao" element={<RotaAdmin><ExposicaoTreino /></RotaAdmin>} />
         <Route path="/biblioteca" element={<RotaAdmin><Biblioteca /></RotaAdmin>} />
         <Route path="/alunos" element={<RotaAdmin><ListaAlunos /></RotaAdmin>} />
         <Route path="/alunos/:id" element={<RotaAdmin><PerfilAluno /></RotaAdmin>} />

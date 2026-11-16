@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/superbase';
+import {
+  EXERCICIOS_CALISTENIA_45,
+  EXERCICIOS_MOBILIDADE_23,
+  converterNivelCalistenia,
+} from '../data/exerciciosExpansao';
 
 export const PADROES_OPCOES = [
   'MMII - Dominante de joelho',
@@ -10,13 +15,17 @@ export const PADROES_OPCOES = [
   'MMSS - Puxada vertical',
   'Core',
   'Potência - Saltos',
-  'Mobilidade',
   'Calistenia',
+  'Mobilidade',
 ];
 
 export const SUBPADROES_POR_PADRAO = {
   'MMII - Dominante de joelho': ['Bilateral', 'Unilateral'],
   'MMII - Dominante de quadril': ['Bilateral', 'Unilateral'],
+  'MMSS - Empurrada horizontal': ['Bilateral', 'Unilateral'],
+  'MMSS - Empurrada vertical': ['Bilateral', 'Unilateral'],
+  'MMSS - Puxada horizontal': ['Bilateral', 'Unilateral'],
+  'MMSS - Puxada vertical': ['Bilateral', 'Unilateral'],
   Core: ['Anti-extensão', 'Cadeia posterior', 'Anti-rotação', 'Anti-flexão lateral', 'Rotacionais'],
   'Potência - Saltos': [
     'Geral',
@@ -26,6 +35,14 @@ export const SUBPADROES_POR_PADRAO = {
     'Horizontal - contínuos',
     'Mix - contínuos',
     'Drop jumps',
+  ],
+  Calistenia: [
+    'Empurrada',
+    'Puxada',
+    'Core / Estáticos',
+    'Membros Inferiores',
+    'Dinâmicos / Skills',
+    'Geral',
   ],
   Mobilidade: [
     'Tornozelo',
@@ -37,17 +54,9 @@ export const SUBPADROES_POR_PADRAO = {
     'Cadeia Posterior / Isquiotibiais',
     'Global / Geral',
   ],
-  Calistenia: [
-    'Empurrada',
-    'Puxada',
-    'Core / Estáticos',
-    'Membros Inferiores',
-    'Dinâmicos / Skills',
-    'Geral',
-  ],
 };
 
-export const TIPOS_OPCOES = ['Força', 'Pliometria', 'Balístico', 'Isometria', 'Mobilidade', 'Calistenia'];
+export const TIPOS_OPCOES = ['Força', 'Pliometria', 'Balístico', 'Isometria', 'Mobilidade'];
 
 export const STATUS_OPCOES = ['Metodologia', 'Proposta (revisar)', 'Inativo'];
 
@@ -57,6 +66,7 @@ export const EQUIPAMENTOS_OPCOES = [
   'Barra',
   'Barra hexagonal',
   'Barra fixa',
+  'Barra vertical/espaldar',
   'Landmine',
   'Rack',
   'Banco',
@@ -76,6 +86,16 @@ export const EQUIPAMENTOS_OPCOES = [
   'Encoder/app',
   'Peso corporal',
   'Carga externa (opcional)',
+];
+
+export const ABAS_RAPIDAS_BIBLIOTECA = [
+  { id: 'Todos', label: 'Todos' },
+  { id: 'MMII', label: 'MMII' },
+  { id: 'MMSS', label: 'MMSS' },
+  { id: 'Core', label: 'Core' },
+  { id: 'Potência', label: 'Potência' },
+  { id: 'Calistenia', label: 'Calistenia' },
+  { id: 'Mobilidade', label: 'Mobilidade' },
 ];
 
 const formInicial = {
@@ -135,10 +155,22 @@ function parseCSV(texto) {
   return linhas;
 }
 
+function deduplicarPorNomeEPadrao(lista) {
+  const mapa = new Map();
+  for (const item of lista) {
+    const chave = `${String(item.nome || '').toLowerCase().trim()}||${String(item.padrao || '').toLowerCase().trim()}`;
+    mapa.set(chave, item);
+  }
+  return Array.from(mapa.values());
+}
+
 export default function Biblioteca() {
   const [exercicios, setExercicios] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [importando, setImportando] = useState(false);
+
+  // Aba de navegação rápida (Seção 6)
+  const [abaAtiva, setAbaAtiva] = useState('Todos');
 
   // Filtros
   const [busca, setBusca] = useState('');
@@ -193,7 +225,9 @@ export default function Biblioteca() {
     setCarregando(false);
   }
 
-  // Importação do biblioteca-exercicios.csv (Seção 6 Passo 2)
+  // Importação do biblioteca-exercicios.csv (Seção 6)
+  // Suporta os 168 exercícios originais + 45 de Calistenia (Tuck=1, One-leg=2, Straddle=3, Full=4, status Metodologia)
+  // + 23 de Mobilidade (tipo Mobilidade, status Proposta (revisar), subpadrão por região do corpo)
   async function handleImportarCSV(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -204,8 +238,8 @@ export default function Biblioteca() {
       const linhas = parseCSV(texto);
       if (linhas.length < 2) throw new Error('Arquivo CSV vazio ou inválido.');
 
-      const headers = linhas[0].map((h) => h.replace(/^\uFEFF/, '').trim());
-      const registros = [];
+      const headers = linhas[0].map((h) => h.replace(/^\uFEFF/, '').trim().toLowerCase());
+      const registrosBrutos = [];
 
       for (let i = 1; i < linhas.length; i++) {
         const vals = linhas[i];
@@ -214,38 +248,65 @@ export default function Biblioteca() {
           obj[h] = vals[idx] !== undefined ? vals[idx] : '';
         });
 
-        if (!obj.nome || !obj.padrao) continue;
+        const nomeLimpo = (obj.nome || '').trim();
+        const padraoLimpo = normalizarTraco(obj.padrao || '');
+        if (!nomeLimpo || !padraoLimpo) continue;
+
+        const isCalistenia = padraoLimpo.toLowerCase() === 'calistenia';
+        const isMobilidade = padraoLimpo.toLowerCase() === 'mobilidade';
 
         const equips = obj.equipamentos
-          ? obj.equipamentos.split(';').map((s) => s.trim()).filter(Boolean)
+          ? obj.equipamentos
+              .split(/[;,]/)
+              .map((s) => s.trim())
+              .filter(Boolean)
           : [];
 
-        registros.push({
-          nome: obj.nome.trim(),
-          padrao: normalizarTraco(obj.padrao),
+        const nivelConvertido = isCalistenia
+          ? converterNivelCalistenia(obj.nivel, nomeLimpo)
+          : obj.nivel !== '' && !Number.isNaN(Number(obj.nivel))
+          ? Number(obj.nivel)
+          : converterNivelCalistenia(obj.nivel, nomeLimpo);
+
+        const tipoFinal = obj.tipo
+          ? obj.tipo.trim()
+          : isMobilidade
+          ? 'Mobilidade'
+          : 'Força';
+
+        const statusFinal = obj.status
+          ? obj.status.trim()
+          : isMobilidade
+          ? 'Proposta (revisar)'
+          : 'Metodologia';
+
+        registrosBrutos.push({
+          nome: nomeLimpo,
+          padrao: isCalistenia ? 'Calistenia' : isMobilidade ? 'Mobilidade' : padraoLimpo,
           subpadrao: obj.subpadrao ? normalizarTraco(obj.subpadrao) : null,
-          nivel: obj.nivel !== '' && !Number.isNaN(Number(obj.nivel)) ? Number(obj.nivel) : null,
+          nivel: nivelConvertido,
           ordem: obj.ordem !== '' && !Number.isNaN(Number(obj.ordem)) ? Number(obj.ordem) : null,
-          tipo: obj.tipo ? obj.tipo.trim() : 'Força',
+          tipo: tipoFinal,
           equipamentos: equips,
           equipamento_original: obj.equipamento_original || null,
           adaptacoes: obj.adaptacoes || null,
           pontos_atencao: obj.pontos_atencao || null,
           criterios_progressao: obj.criterios_progressao || null,
           observacoes: obj.observacoes || null,
-          status: obj.status ? obj.status.trim() : 'Metodologia',
+          status: statusFinal,
           midia_url: obj.midia_url || null,
         });
       }
 
-      // Upsert usando chave única (nome, padrao) para atualizar se existir e criar se não existir
+      const registros = deduplicarPorNomeEPadrao(registrosBrutos);
+
       const { error } = await supabase
         .from('exercicios')
         .upsert(registros, { onConflict: 'nome,padrao' });
 
       if (error) throw error;
 
-      window.alert(`Importação concluída! ${registros.length} exercícios processados.`);
+      window.alert(`Importação concluída! ${registros.length} exercícios processados via upsert (nome + padrão).`);
       carregarExercicios();
     } catch (err) {
       window.alert('Erro na importação do CSV: ' + err.message);
@@ -255,9 +316,66 @@ export default function Biblioteca() {
     }
   }
 
+  // Sincroniza diretamente os 45 exercícios de Calistenia e 23 de Mobilidade (Seção 6)
+  async function handleSincronizarExpansao() {
+    setImportando(true);
+    try {
+      const lote = deduplicarPorNomeEPadrao([
+        ...EXERCICIOS_CALISTENIA_45,
+        ...EXERCICIOS_MOBILIDADE_23,
+      ]);
+
+      const { error } = await supabase
+        .from('exercicios')
+        .upsert(lote, { onConflict: 'nome,padrao' });
+
+      if (error) throw error;
+
+      window.alert(
+        `Expansão sincronizada com sucesso!\n• 45 exercícios de Calistenia (Metodologia, níveis Tuck=1, One-leg=2, Straddle=3, Full=4)\n• 23 exercícios de Mobilidade (Proposta (revisar), por região do corpo)`
+      );
+      carregarExercicios();
+    } catch (err) {
+      window.alert('Erro ao sincronizar Calistenia e Mobilidade: ' + err.message);
+    } finally {
+      setImportando(false);
+    }
+  }
+
+  function selecionarAbaRapida(abaId) {
+    setAbaAtiva(abaId);
+    setFiltroSubpadrao('');
+    if (abaId === 'Todos') {
+      setFiltroPadrao('');
+    } else if (abaId === 'Core' || abaId === 'Calistenia' || abaId === 'Mobilidade') {
+      setFiltroPadrao(abaId);
+    } else if (abaId === 'Potência') {
+      setFiltroPadrao('Potência - Saltos');
+    } else {
+      // MMII ou MMSS possuem múltiplos padrões específicos
+      setFiltroPadrao('');
+    }
+  }
+
   function abrirNovo() {
     setEditandoId(null);
-    setForm(formInicial);
+    const padraoInicial =
+      abaAtiva === 'Calistenia'
+        ? 'Calistenia'
+        : abaAtiva === 'Mobilidade'
+        ? 'Mobilidade'
+        : abaAtiva === 'Core'
+        ? 'Core'
+        : abaAtiva === 'Potência'
+        ? 'Potência - Saltos'
+        : PADROES_OPCOES[0];
+
+    setForm({
+      ...formInicial,
+      padrao: padraoInicial,
+      tipo: padraoInicial === 'Mobilidade' ? 'Mobilidade' : 'Força',
+      status: padraoInicial === 'Mobilidade' ? 'Proposta (revisar)' : 'Metodologia',
+    });
     setModalAberto(true);
   }
 
@@ -364,8 +482,21 @@ export default function Biblioteca() {
     }));
   };
 
-  // Aplicação dos filtros
+  function correspondeAba(ex, aba) {
+    const p = ex.padrao || '';
+    if (aba === 'Todos') return true;
+    if (aba === 'MMII') return p.startsWith('MMII');
+    if (aba === 'MMSS') return p.startsWith('MMSS');
+    if (aba === 'Core') return p === 'Core';
+    if (aba === 'Potência') return p.startsWith('Potência');
+    if (aba === 'Calistenia') return p === 'Calistenia';
+    if (aba === 'Mobilidade') return p === 'Mobilidade';
+    return true;
+  }
+
+  // Aplicação combinada da aba ativa + filtros
   const exerciciosFiltrados = exercicios.filter((ex) => {
+    if (!correspondeAba(ex, abaAtiva)) return false;
     if (busca && !ex.nome.toLowerCase().includes(busca.toLowerCase())) return false;
     if (filtroPadrao && ex.padrao !== filtroPadrao) return false;
     if (filtroSubpadrao && ex.subpadrao !== filtroSubpadrao) return false;
@@ -379,16 +510,48 @@ export default function Biblioteca() {
     return true;
   });
 
-  const subpadroesDisponiveisFiltro = filtroPadrao ? SUBPADROES_POR_PADRAO[filtroPadrao] || [] : [];
+  // Subpadrões disponíveis para o filtro atual (considerando o filtroPadrao ou a aba rápida selecionada)
+  const subpadroesDisponiveisFiltro = (() => {
+    if (filtroPadrao && SUBPADROES_POR_PADRAO[filtroPadrao]) {
+      return SUBPADROES_POR_PADRAO[filtroPadrao];
+    }
+    if (abaAtiva === 'Calistenia') return SUBPADROES_POR_PADRAO.Calistenia || [];
+    if (abaAtiva === 'Mobilidade') return SUBPADROES_POR_PADRAO.Mobilidade || [];
+    if (abaAtiva === 'Core') return SUBPADROES_POR_PADRAO.Core || [];
+    if (abaAtiva === 'Potência') return SUBPADROES_POR_PADRAO['Potência - Saltos'] || [];
+    if (abaAtiva === 'MMII' || abaAtiva === 'MMSS') {
+      return ['Bilateral', 'Unilateral'];
+    }
+    // Se estiver em Todos sem padrão selecionado, reúne todos os subpadrões únicos existentes
+    const unicos = new Set();
+    Object.values(SUBPADROES_POR_PADRAO).forEach((arr) => arr.forEach((s) => unicos.add(s)));
+    return Array.from(unicos);
+  })();
+
   const subpadroesDisponiveisForm = SUBPADROES_POR_PADRAO[form.padrao] || [];
 
   const st = {
     container: { maxWidth: '1150px', margin: '30px auto', padding: '26px', background: '#fff', borderRadius: '12px', boxShadow: '0 6px 24px rgba(0,0,0,0.07)' },
-    topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' },
+    topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' },
+    tabsBar: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px' },
+    tabBtn: (ativa) => ({
+      padding: '9px 16px',
+      borderRadius: '8px',
+      border: ativa ? 'none' : '1px solid #cbd5e1',
+      background: ativa ? '#4460B8' : '#f8fafc',
+      color: ativa ? '#fff' : '#334155',
+      fontWeight: 'bold',
+      fontSize: '13.5px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+    }),
     filtrosBox: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', background: '#f8fafc', padding: '15px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '20px' },
     input: { width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' },
     btnPrim: { background: '#4460B8', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' },
     btnSec: { background: '#2DAFAB', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'inline-block' },
+    btnOrange: { background: '#E17900', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13.5px' },
     table: { width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' },
     th: { textAlign: 'left', padding: '11px', background: '#f1f5f9', borderBottom: '2px solid #cbd5e1', color: '#334155' },
     td: { padding: '10px 11px', borderBottom: '1px solid #e2e8f0', verticalAlign: 'middle' },
@@ -407,8 +570,17 @@ export default function Biblioteca() {
         </div>
 
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            style={st.btnOrange}
+            onClick={handleSincronizarExpansao}
+            disabled={importando}
+            title="Insere/atualiza os 45 exercícios de Calistenia e os 23 de Mobilidade sem duplicar"
+          >
+            {importando ? 'Sincronizando...' : '🤸 Sincronizar Calistenia (45) + Mobilidade (23)'}
+          </button>
           <label style={st.btnSec}>
-            {importando ? 'Importando CSV...' : '📥 Importar CSV (168)'}
+            {importando ? 'Importando CSV...' : '📥 Importar CSV'}
             <input type="file" accept=".csv" onChange={handleImportarCSV} disabled={importando} style={{ display: 'none' }} />
           </label>
           <button style={st.btnPrim} onClick={abrirNovo}>
@@ -417,7 +589,36 @@ export default function Biblioteca() {
         </div>
       </div>
 
-      {/* BARRA DE BUSCA E FILTROS */}
+      {/* ABAS DE NAVEGAÇÃO RÁPIDA (SEÇÃO 6) */}
+      <div style={st.tabsBar}>
+        {ABAS_RAPIDAS_BIBLIOTECA.map((aba) => {
+          const qtdAba = exercicios.filter((ex) => correspondeAba(ex, aba.id)).length;
+          const isAtiva = abaAtiva === aba.id;
+          return (
+            <button
+              key={aba.id}
+              type="button"
+              style={st.tabBtn(isAtiva)}
+              onClick={() => selecionarAbaRapida(aba.id)}
+            >
+              <span>{aba.label}</span>
+              <span
+                style={{
+                  fontSize: '11.5px',
+                  padding: '1px 7px',
+                  borderRadius: '999px',
+                  background: isAtiva ? 'rgba(255,255,255,0.22)' : '#e2e8f0',
+                  color: isAtiva ? '#fff' : '#475569',
+                }}
+              >
+                {qtdAba}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* BARRA DE BUSCA E FILTROS COMBINADOS */}
       <div style={st.filtrosBox}>
         <input
           type="text"
@@ -430,12 +631,28 @@ export default function Biblioteca() {
           style={st.input}
           value={filtroPadrao}
           onChange={(e) => {
-            setFiltroPadrao(e.target.value);
+            const val = e.target.value;
+            setFiltroPadrao(val);
             setFiltroSubpadrao('');
+            if (!val) {
+              setAbaAtiva('Todos');
+            } else if (val.startsWith('MMII')) {
+              setAbaAtiva('MMII');
+            } else if (val.startsWith('MMSS')) {
+              setAbaAtiva('MMSS');
+            } else if (val === 'Core') {
+              setAbaAtiva('Core');
+            } else if (val.startsWith('Potência')) {
+              setAbaAtiva('Potência');
+            } else if (val === 'Calistenia') {
+              setAbaAtiva('Calistenia');
+            } else if (val === 'Mobilidade') {
+              setAbaAtiva('Mobilidade');
+            }
           }}
         >
           <option value="">Todos os Padrões</option>
-          {PADROES_OPCOES.map((p) => (
+          {PADROES_OPCOES.filter((p) => correspondeAba({ padrao: p }, abaAtiva)).map((p) => (
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
@@ -446,7 +663,7 @@ export default function Biblioteca() {
           onChange={(e) => setFiltroSubpadrao(e.target.value)}
           disabled={subpadroesDisponiveisFiltro.length === 0}
         >
-          <option value="">Subpadrão</option>
+          <option value="">Todos os Subpadrões</option>
           {subpadroesDisponiveisFiltro.map((sp) => (
             <option key={sp} value={sp}>{sp}</option>
           ))}
@@ -454,10 +671,10 @@ export default function Biblioteca() {
 
         <select style={st.input} value={filtroNivel} onChange={(e) => setFiltroNivel(e.target.value)}>
           <option value="">Todos os Níveis</option>
-          <option value="1">Nível 1</option>
-          <option value="2">Nível 2</option>
-          <option value="3">Nível 3</option>
-          <option value="4">Nível 4</option>
+          <option value="1">Nível 1 {abaAtiva === 'Calistenia' ? '(Tuck)' : ''}</option>
+          <option value="2">Nível 2 {abaAtiva === 'Calistenia' ? '(One-leg)' : ''}</option>
+          <option value="3">Nível 3 {abaAtiva === 'Calistenia' ? '(Straddle)' : ''}</option>
+          <option value="4">Nível 4 {abaAtiva === 'Calistenia' ? '(Full)' : ''}</option>
           <option value="5">Nível 5</option>
           <option value="sem">A definir</option>
         </select>
@@ -517,7 +734,23 @@ export default function Biblioteca() {
                     <div>{ex.padrao}</div>
                     {ex.subpadrao && <small style={{ color: '#64748b' }}>{ex.subpadrao}</small>}
                   </td>
-                  <td style={st.td}>{ex.nivel ? `N${ex.nivel}` : 'A definir'}</td>
+                  <td style={st.td}>
+                    {ex.nivel
+                      ? ex.padrao === 'Calistenia'
+                        ? `N${ex.nivel} (${
+                            ex.nivel === 1
+                              ? 'Tuck'
+                              : ex.nivel === 2
+                              ? 'One-leg'
+                              : ex.nivel === 3
+                              ? 'Straddle'
+                              : ex.nivel === 4
+                              ? 'Full'
+                              : `N${ex.nivel}`
+                          })`
+                        : `N${ex.nivel}`
+                      : 'A definir'}
+                  </td>
                   <td style={st.td}>{ex.tipo}</td>
                   <td style={st.td}>{(ex.equipamentos || []).join(', ') || '-'}</td>
                   <td style={st.td}>
@@ -617,7 +850,15 @@ export default function Biblioteca() {
                   <select
                     style={st.input}
                     value={form.padrao}
-                    onChange={(e) => setForm({ ...form, padrao: e.target.value, subpadrao: '' })}
+                    onChange={(e) => {
+                      const novoPadrao = e.target.value;
+                      setForm({
+                        ...form,
+                        padrao: novoPadrao,
+                        subpadrao: '',
+                        tipo: novoPadrao === 'Mobilidade' ? 'Mobilidade' : form.tipo,
+                      });
+                    }}
                   >
                     {PADROES_OPCOES.map((p) => (
                       <option key={p} value={p}>{p}</option>
@@ -647,7 +888,7 @@ export default function Biblioteca() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontWeight: 'bold', fontSize: '13px' }}>Nível (1 a 5)</label>
+                  <label style={{ fontWeight: 'bold', fontSize: '13px' }}>Nível (1 a 5 — Calistenia: 1=Tuck, 2=One-leg, 3=Straddle, 4=Full)</label>
                   <input type="number" min="1" max="5" placeholder="Vazio = a definir" style={st.input} value={form.nivel} onChange={(e) => setForm({ ...form, nivel: e.target.value })} />
                 </div>
                 <div>

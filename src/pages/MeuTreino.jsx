@@ -3,6 +3,12 @@ import { supabase } from '../lib/superbase';
 import html2canvas from 'html2canvas';
 import { calcularCarta } from '../utils/cartaTrunfo';
 import { abrirLaudoPDF } from '../utils/gerarLaudoPDF';
+import {
+  normalizarBloco,
+  ordenarItensTreinoPorBloco,
+  extrairDuracaoAquecimento,
+  formatarAuditoriaAula,
+} from '../utils/prescricaoUtils';
 
 export default function MeuTreino() {
   const [alunoId, setAlunoId] = useState(null);
@@ -42,11 +48,14 @@ export default function MeuTreino() {
   async function buscarTreinosEAvaliacao(id) {
     const { data: treinosData } = await supabase
       .from('treinos')
-      .select('*, mesociclos(nome)')
+      .select('*, mesociclos(nome, excluido_em)')
       .eq('aluno_id', id)
       .order('criado_em', { ascending: false });
 
-    if (treinosData) setTreinos(treinosData);
+    if (treinosData) {
+      // Filtra itens não excluídos (Seção 3.1)
+      setTreinos(treinosData.filter((t) => !t.excluido_em && !t.mesociclos?.excluido_em));
+    }
 
     const { data: avaliacoesData } = await supabase
       .from('avaliacoes')
@@ -136,81 +145,139 @@ export default function MeuTreino() {
 
       <h3 style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', marginTop: '30px' }}>🏋️ O Teu Treino Atual</h3>
       {treinos.length > 0 ? (
-        treinos.map((treino) => (
-          <div key={treino.id} style={styles.treinoBox}>
-            <div style={styles.treinoHeader}>{treino.titulo || 'Treino do Mesociclo'}</div>
-            {treino.mesociclos?.nome && (
-              <div style={{ fontSize: '13px', color: '#0369a1', fontWeight: 'bold', marginBottom: '10px' }}>
-                📅 Mesociclo: {treino.mesociclos.nome}
-              </div>
-            )}
-            {Array.isArray(treino.itens_estruturados) && treino.itens_estruturados.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {treino.itens_estruturados.map((item, idx) =>
-                  item.tipo === 'cardio' ? (
-                    <div
-                      key={item.id_unico || idx}
-                      style={{
-                        background: '#f0fdfa',
-                        border: '1px solid #99f6e4',
-                        borderLeft: '6px solid #2DAFAB',
-                        borderRadius: '8px',
-                        padding: '12px 14px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-                        <span style={{ background: '#2DAFAB', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '999px' }}>
-                          🫀 CARDIO
-                        </span>
-                        <strong style={{ color: '#0f766e', fontSize: '14.5px' }}>
-                          [Bloco {item.bloco || '1'}] {item.titulo || 'Bloco Cardiorrespiratório'}
-                        </strong>
-                        {item.duracao_min && (
-                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f766e', background: '#ccfbf1', padding: '2px 7px', borderRadius: '6px' }}>
-                            ⏱️ {item.duracao_min} min
-                          </span>
+        treinos.map((treino) => {
+          const itensOrdenados = ordenarItensTreinoPorBloco(treino.itens_estruturados || []);
+          const durAq = extrairDuracaoAquecimento(treino);
+          const auditoriaTexto = formatarAuditoriaAula(treino);
+
+          return (
+            <div key={treino.id} style={styles.treinoBox}>
+              <div style={styles.treinoHeader}>{treino.titulo || 'Treino do Mesociclo'}</div>
+              {treino.mesociclos?.nome && (
+                <div style={{ fontSize: '13px', color: '#0369a1', fontWeight: 'bold', marginBottom: '6px' }}>
+                  📅 Mesociclo: {treino.mesociclos.nome}
+                </div>
+              )}
+              {auditoriaTexto && (
+                <div style={{ fontSize: '12px', color: '#9a3412', background: '#fff7ed', border: '1px solid #fed7aa', display: 'inline-block', padding: '3px 9px', borderRadius: '999px', marginBottom: '10px', fontWeight: 'bold' }}>
+                  ✏️ {auditoriaTexto}
+                </div>
+              )}
+              {itensOrdenados.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {itensOrdenados.map((item, idx) => {
+                    const isCardio = item.tipo === 'cardio';
+                    const isAquecimento = normalizarBloco(item.bloco) === '0';
+                    const isTextoLivre = item.tipo === 'texto';
+
+                    if (isCardio) {
+                      return (
+                        <div
+                          key={item.id_unico || idx}
+                          style={{
+                            background: '#f0fdfa',
+                            border: '1px solid #99f6e4',
+                            borderLeft: '6px solid #2DAFAB',
+                            borderRadius: '8px',
+                            padding: '12px 14px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                            <span style={{ background: '#2DAFAB', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '999px' }}>
+                              🫀 CARDIO
+                            </span>
+                            <strong style={{ color: '#0f766e', fontSize: '14.5px' }}>
+                              [Bloco {item.bloco || '1'}] {item.titulo || 'Bloco Cardiorrespiratório'}
+                            </strong>
+                            {item.duracao_min && (
+                              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f766e', background: '#ccfbf1', padding: '2px 7px', borderRadius: '6px' }}>
+                                ⏱️ {item.duracao_min} min
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ whiteSpace: 'pre-wrap', fontSize: '13.5px', color: '#134e4a', lineHeight: '1.5' }}>
+                            {item.descricao}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (isTextoLivre) {
+                      return (
+                        <div
+                          key={item.id_unico || idx}
+                          style={{
+                            background: '#fff7ed',
+                            border: '1px solid #fed7aa',
+                            borderLeft: '6px solid #E17900',
+                            borderRadius: '8px',
+                            padding: '12px 14px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                            <span style={{ background: '#E17900', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '999px' }}>
+                              🔥 AQUECIMENTO
+                            </span>
+                            <strong style={{ color: '#9a3412', fontSize: '14.5px' }}>
+                              {item.titulo || 'Aquecimento'}
+                            </strong>
+                            {durAq && (
+                              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#9a3412', background: '#ffedd5', padding: '2px 7px', borderRadius: '6px' }}>
+                                ⏱️ {durAq} min
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ whiteSpace: 'pre-wrap', fontSize: '13.5px', color: '#7c2d12', lineHeight: '1.5' }}>
+                            {item.descricao}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={item.id_unico || idx}
+                        style={{
+                          background: isAquecimento ? '#fff7ed' : '#ffffff',
+                          border: isAquecimento ? '1px solid #fed7aa' : '1px solid #e2e8f0',
+                          borderLeft: isAquecimento ? '6px solid #E17900' : '4px solid #4460B8',
+                          borderRadius: '6px',
+                          padding: '10px 12px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          {isAquecimento && (
+                            <span style={{ background: '#E17900', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '999px' }}>
+                              🔥 AQUECIMENTO{durAq ? ` (${durAq} min)` : ''}
+                            </span>
+                          )}
+                          <strong style={{ fontSize: '14px', color: isAquecimento ? '#9a3412' : '#0f172a' }}>
+                            [{isAquecimento ? 'Aquecimento' : `Bloco ${item.bloco || '1'}`}] • {item.nome} ({item.equipamento || 'Livre'})
+                          </strong>
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px' }}>
+                          {item.series}x{item.repeticoes} | Carga: {item.carga && item.carga !== '-' ? `${item.carga}kg` : '-'} | Intervalo: {item.intervalo || '-'}
+                        </div>
+                        {item.pontos_atencao && (
+                          <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '2px' }}>
+                            💡 Dica: {item.pontos_atencao}
+                          </div>
+                        )}
+                        {item.observacao && (
+                          <div style={{ fontSize: '12.5px', color: '#334155', marginTop: '2px' }}>
+                            📝 Obs: {item.observacao}
+                          </div>
                         )}
                       </div>
-                      <div style={{ whiteSpace: 'pre-wrap', fontSize: '13.5px', color: '#134e4a', lineHeight: '1.5' }}>
-                        {item.descricao}
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      key={item.id_unico || idx}
-                      style={{
-                        background: '#ffffff',
-                        border: '1px solid #e2e8f0',
-                        borderLeft: '4px solid #4460B8',
-                        borderRadius: '6px',
-                        padding: '10px 12px',
-                      }}
-                    >
-                      <strong style={{ fontSize: '14px', color: '#0f172a' }}>
-                        [Bloco {item.bloco || '1'}] • {item.nome} ({item.equipamento || 'Livre'})
-                      </strong>
-                      <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px' }}>
-                        {item.series}x{item.repeticoes} | Carga: {item.carga && item.carga !== '-' ? `${item.carga}kg` : '-'} | Intervalo: {item.intervalo || '-'}
-                      </div>
-                      {item.pontos_atencao && (
-                        <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '2px' }}>
-                          💡 Dica: {item.pontos_atencao}
-                        </div>
-                      )}
-                      {item.observacao && (
-                        <div style={{ fontSize: '12.5px', color: '#334155', marginTop: '2px' }}>
-                          📝 Obs: {item.observacao}
-                        </div>
-                      )}
-                    </div>
-                  )
-                )}
-              </div>
-            ) : (
-              <div style={styles.exerciciosTexto}>{treino.exercicios}</div>
-            )}
-          </div>
-        ))
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={styles.exerciciosTexto}>{treino.exercicios}</div>
+              )}
+            </div>
+          );
+        })
       ) : (
         <p style={{ color: '#64748b' }}>Ainda não tens treinos prescritos.</p>
       )}
