@@ -11,6 +11,13 @@ import {
   formatarAuditoriaAula,
   calcularProgressoMesociclo,
   sugerirProximoTreino,
+  parseCargaNumerica,
+  formatarNumeroCarga,
+  obterUltimaCargaExercicioAluno,
+  verificarSessaoForaDoPeriodo,
+  carregarSessoesDoAluno,
+  registrarSessaoDeAula,
+  formatarDataCurtaDDMM,
 } from '../utils/prescricaoUtils';
 
 const CORES_ALUNOS = [
@@ -161,8 +168,9 @@ export default function ExposicaoTreino() {
   //   termoBuscaEx: string,
   // }
   const [colunasState, setColunasState] = useState({});
+  const [sessoesPorAluno, setSessoesPorAluno] = useState({});
 
-  // Modal de confirmação de salvar edição de um aluno
+  // Modal de confirmação de salvar (Seção 2.2: Registrar a aula de hoje + Aplicar mudanças no treino original)
   const [confirmacaoSalvarCol, setConfirmacaoSalvarCol] = useState(null);
   const [salvandoColuna, setSalvandoColuna] = useState(false);
 
@@ -171,6 +179,24 @@ export default function ExposicaoTreino() {
 
   // Modal de visualização de mídia do exercício
   const [midiaModal, setMidiaModal] = useState(null);
+
+  const carregarHistoricoSessoesAlunos = useCallback(async (idsAlunos = []) => {
+    const unicos = Array.from(new Set(idsAlunos.filter(Boolean).map(String)));
+    if (unicos.length === 0) return;
+    const resultados = await Promise.all(
+      unicos.map(async (alId) => {
+        const lista = await carregarSessoesDoAluno(alId);
+        return [alId, lista];
+      })
+    );
+    setSessoesPorAluno((prev) => {
+      const copia = { ...prev };
+      resultados.forEach(([alId, lista]) => {
+        copia[alId] = lista;
+      });
+      return copia;
+    });
+  }, []);
 
   // 1. Carregamento inicial de dados do Supabase
   useEffect(() => {
@@ -232,6 +258,7 @@ export default function ExposicaoTreino() {
         ];
         setSlotsConfig(novosSlots);
         setQtdAlunosAula(1);
+        carregarHistoricoSessoesAlunos([urlAlunoId]);
 
         if (urlTreinoId && treinoEscolhidoId) {
           inicializarEstadoColunas([novosSlots[0]], treinosAtivos);
@@ -256,6 +283,7 @@ export default function ExposicaoTreino() {
                 );
                 setSlotsConfig(preenchidos);
                 setQtdAlunosAula(slotsValidos.length);
+                carregarHistoricoSessoesAlunos(slotsValidos.map((s) => s.alunoId));
                 inicializarEstadoColunas(slotsValidos, treinosAtivos);
                 setExposicaoAtiva(true);
               }
@@ -272,7 +300,7 @@ export default function ExposicaoTreino() {
     carregarBase();
   }, []);
 
-  // Inicializa o estado das colunas mesclando com rascunhos salvos no localStorage (Seção 9)
+  // Inicializa o estado das colunas mesclando com rascunhos salvos no localStorage (Seções 2.2 e 9)
   const inicializarEstadoColunas = useCallback((slotsAtivos, listaTreinosRef = treinos) => {
     const novoMapa = {};
 
@@ -293,6 +321,19 @@ export default function ExposicaoTreino() {
           ? String(rascunho.duracaoAquecimentoMin || '')
           : durOrigStr;
 
+      // Monta o mapa "Hoje" (carga_kg vazia por padrão, séries e repetições preenchidas com o prescrito)
+      const hojeMapInicial = {};
+      itensAtuais.forEach((it) => {
+        if (it.tipo === 'cardio' || it.tipo === 'texto') return;
+        const salvoHoje = rascunho?.hojeMap?.[it.id_unico] || {};
+        hojeMapInicial[it.id_unico] = {
+          carga_kg: salvoHoje.carga_kg !== undefined ? String(salvoHoje.carga_kg) : '',
+          series: salvoHoje.series !== undefined ? String(salvoHoje.series) : String(it.series || ''),
+          repeticoes:
+            salvoHoje.repeticoes !== undefined ? String(salvoHoje.repeticoes) : String(it.repeticoes || ''),
+        };
+      });
+
       novoMapa[chave] = {
         modoEdicao: Boolean(rascunho?.modoEdicao),
         itensAtuais,
@@ -300,6 +341,8 @@ export default function ExposicaoTreino() {
         duracaoAquecimentoAtual: durAtualStr,
         duracaoAquecimentoOriginal: durOrigStr,
         concluidosMap: rascunho?.concluidosMap || {},
+        hojeMap: hojeMapInicial,
+        ultimaSessaoSalvaInfo: null,
         adicionandoItemTipo: null,
         novoItemForm: {
           bloco: '1',
@@ -418,8 +461,8 @@ export default function ExposicaoTreino() {
     }
   }
 
-  // Verifica se uma coluna específica possui alterações não salvas em relação ao original
-  function colunaTemAlteracoesNaoSalvas(chave) {
+  // Verifica se a estrutura prescrita do treino foi editada no modo Editar (Seção 2.2)
+  function colunaTemAlteracoesEstruturais(chave) {
     const stCol = colunasState[chave];
     if (!stCol) return false;
     if (String(stCol.duracaoAquecimentoAtual || '') !== String(stCol.duracaoAquecimentoOriginal || '')) {
@@ -434,6 +477,23 @@ export default function ExposicaoTreino() {
       }
     }
     return false;
+  }
+
+  // Verifica se há exercícios marcados como feitos ou com carga digitada hoje (Seção 2.1 / 2.2)
+  function colunaTemRegistroHojePendente(chave) {
+    const stCol = colunasState[chave];
+    if (!stCol) return false;
+    const temConcluido = Object.values(stCol.concluidosMap || {}).some(Boolean);
+    if (temConcluido) return true;
+    const temCargaDigitada = Object.values(stCol.hojeMap || {}).some(
+      (h) => h && String(h.carga_kg || '').trim() !== ''
+    );
+    return temCargaDigitada;
+  }
+
+  // Verifica se uma coluna específica possui alterações ou registros de aula não salvos
+  function colunaTemAlteracoesNaoSalvas(chave) {
+    return colunaTemAlteracoesEstruturais(chave) || colunaTemRegistroHojePendente(chave);
   }
 
   function itemFoiModificado(chave, item) {
@@ -472,6 +532,10 @@ export default function ExposicaoTreino() {
     const mesosDoAluno = mesociclos.filter((m) => String(m.aluno_id) === String(novoAlunoId));
     const sugerido = sugerirProximoTreino(treinosDoAluno, mesosDoAluno, novoAlunoId);
 
+    if (novoAlunoId) {
+      carregarHistoricoSessoesAlunos([novoAlunoId]);
+    }
+
     setSlotsConfig((prev) => {
       const copia = [...prev];
       copia[slotIdx] = {
@@ -500,6 +564,7 @@ export default function ExposicaoTreino() {
       return window.alert('Selecione pelo menos 1 aluno e o respectivo treino para iniciar a exposição.');
     }
 
+    await carregarHistoricoSessoesAlunos(validos.map((s) => s.alunoId));
     inicializarEstadoColunas(validos, treinos);
     setColunaExpandidaIdx(null);
     setExposicaoAtiva(true);
@@ -542,6 +607,7 @@ export default function ExposicaoTreino() {
           duracaoAquecimentoMin: novo.duracaoAquecimentoAtual,
           modoEdicao: novo.modoEdicao,
           concluidosMap: novo.concluidosMap,
+          hojeMap: novo.hojeMap,
         });
       }
 
@@ -552,7 +618,7 @@ export default function ExposicaoTreino() {
     });
   }
 
-  // --- PROGRESSO VISUAL LOCAL (TOCAR NO EXERCÍCIO PARA MARCAR/DESMARCAR CONCLUÍDO) ---
+  // --- PROGRESSO VISUAL LOCAL (TOCAR NO CÍRCULO ✓ PARA MARCAR/DESMARCAR CONCLUÍDO) ---
   function toggleExercicioConcluido(chave, idUnico) {
     atualizarColuna(chave, (col) => ({
       ...col,
@@ -561,6 +627,74 @@ export default function ExposicaoTreino() {
         [idUnico]: !col.concluidosMap?.[idUnico],
       },
     }));
+  }
+
+  // --- ÁREA "HOJE": REGISTRAR CARGA, SÉRIES E REPETIÇÕES DO DIA (SEÇÃO 2.1) ---
+  function atualizarCampoHojeItem(chave, item, campo, valor) {
+    const idUnico = item.id_unico;
+    atualizarColuna(chave, (col) => {
+      const atualHoje = col.hojeMap?.[idUnico] || {
+        carga_kg: '',
+        series: String(item.series || ''),
+        repeticoes: String(item.repeticoes || ''),
+      };
+      const novoHoje = {
+        ...atualHoje,
+        [campo]: valor,
+      };
+      // Seção 2.1: "Digitar uma carga já marca o exercício como feito."
+      const deveMarcarFeito =
+        campo === 'carga_kg'
+          ? String(valor || '').trim() !== ''
+            ? true
+            : col.concluidosMap?.[idUnico]
+          : true;
+
+      return {
+        ...col,
+        concluidosMap: {
+          ...col.concluidosMap,
+          [idUnico]: Boolean(deveMarcarFeito),
+        },
+        hojeMap: {
+          ...col.hojeMap,
+          [idUnico]: novoHoje,
+        },
+      };
+    });
+  }
+
+  function ajustarCargaRapidaHoje(chave, item, deltaKg, ultimaCargaKg = null) {
+    const idUnico = item.id_unico;
+    atualizarColuna(chave, (col) => {
+      const atualHoje = col.hojeMap?.[idUnico] || {
+        carga_kg: '',
+        series: String(item.series || ''),
+        repeticoes: String(item.repeticoes || ''),
+      };
+      const baseAtual =
+        parseCargaNumerica(atualHoje.carga_kg) ??
+        ultimaCargaKg ??
+        parseCargaNumerica(item.carga) ??
+        0;
+      const novaCarga = Math.max(0, Math.round((baseAtual + deltaKg) * 100) / 100);
+      const novaCargaStr = formatarNumeroCarga(novaCarga) ?? '0';
+
+      return {
+        ...col,
+        concluidosMap: {
+          ...col.concluidosMap,
+          [idUnico]: true,
+        },
+        hojeMap: {
+          ...col.hojeMap,
+          [idUnico]: {
+            ...atualHoje,
+            carga_kg: novaCargaStr,
+          },
+        },
+      };
+    });
   }
 
   // --- OPERAÇÕES DE EDIÇÃO DURANTE A EXPOSIÇÃO (SEÇÃO 9) ---
@@ -701,6 +835,17 @@ export default function ExposicaoTreino() {
       ...col,
       adicionandoItemTipo: null,
       itensAtuais: ordenarItensTreinoPorBloco([...col.itensAtuais, novoItem]),
+      hojeMap:
+        novoItem.tipo === 'exercicio'
+          ? {
+              ...col.hojeMap,
+              [novoItem.id_unico]: {
+                carga_kg: '',
+                series: String(novoItem.series || ''),
+                repeticoes: String(novoItem.repeticoes || ''),
+              },
+            }
+          : col.hojeMap,
       novoItemForm: {
         bloco: '1',
         exercicioId: '',
@@ -717,7 +862,7 @@ export default function ExposicaoTreino() {
     }));
   }
 
-  // --- DESCARTAR RASCUNHO INDIVIDUAL DE UM ALUNO (SEÇÃO 9) ---
+  // --- DESCARTAR RASCUNHO E CARGAS DIGITADAS DE UM ALUNO (SEÇÃO 2.2 e 9) ---
   function handleDescartarAlteracoesColuna(alunoId, treinoId) {
     const chave = `${alunoId}:::${treinoId}`;
     limparRascunhoStorage(alunoId, treinoId);
@@ -725,18 +870,137 @@ export default function ExposicaoTreino() {
     setColunasState((prev) => {
       const col = prev[chave];
       if (!col) return prev;
+      const itensRestaurados = garantirIdsNosItens(col.itensOriginais);
+      const hojeMapLimpo = {};
+      itensRestaurados.forEach((it) => {
+        if (it.tipo === 'cardio' || it.tipo === 'texto') return;
+        hojeMapLimpo[it.id_unico] = {
+          carga_kg: '',
+          series: String(it.series || ''),
+          repeticoes: String(it.repeticoes || ''),
+        };
+      });
+
       return {
         ...prev,
         [chave]: {
           ...col,
           modoEdicao: false,
-          itensAtuais: garantirIdsNosItens(col.itensOriginais),
+          itensAtuais: itensRestaurados,
           duracaoAquecimentoAtual: col.duracaoAquecimentoOriginal,
+          concluidosMap: {},
+          hojeMap: hojeMapLimpo,
           adicionandoItemTipo: null,
           trocandoExercicioItemId: null,
         },
       };
     });
+  }
+
+  // --- ABRIR MODAL DE SALVAR POR ALUNO (SEÇÃO 2.2) ---
+  function abrirModalSalvarColuna({ alunoId, treinoId, alunoNome, treinoTitulo }) {
+    const chave = `${alunoId}:::${treinoId}`;
+    const temEstrutural = colunaTemAlteracoesEstruturais(chave);
+    const hojeISO = new Date().toISOString().slice(0, 10);
+
+    setConfirmacaoSalvarCol({
+      alunoId,
+      treinoId,
+      alunoNome,
+      treinoTitulo,
+      dataSessao: hojeISO,
+      observacaoSessao: '',
+      registrarAulaHoje: true, // Seção 2.2: "Registrar a aula de hoje ... Vem marcado."
+      temAlteracaoEstrutural: temEstrutural,
+      aplicarNoTreinoOriginal: false, // Só aplica no treino original se o professor marcar a 2ª opção
+    });
+  }
+
+  // Extrai os exercícios realizados (marcados como feitos ✓ ou com carga digitada) para gravar na sessão (Seção 2.2)
+  function extrairItensRealizadosNaSessao(chave) {
+    const col = colunasState[chave];
+    if (!col) return { itensExerciciosRealizados: [], itensTextoFeitos: [] };
+
+    const itensExerciciosRealizados = [];
+    const itensTextoFeitos = [];
+
+    (col.itensAtuais || []).forEach((item) => {
+      const foiConcluido = Boolean(col.concluidosMap?.[item.id_unico]);
+      const dadosHoje = col.hojeMap?.[item.id_unico] || {};
+      const temCargaDigitada = String(dadosHoje.carga_kg || '').trim() !== '';
+
+      if (item.tipo === 'cardio' || item.tipo === 'texto') {
+        if (foiConcluido) {
+          itensTextoFeitos.push({
+            id_unico: item.id_unico,
+            tipo: item.tipo,
+            bloco: normalizarBloco(item.bloco),
+            titulo: item.titulo || (item.tipo === 'cardio' ? 'Cardio' : 'Aquecimento'),
+          });
+        }
+        return;
+      }
+
+      // Seção 2.2: "Na sessão entram só os exercícios marcados como feitos ou com carga digitada.
+      // Exercício não feito não é gravado. Assim, ele não aparece como 'carga 0' na progressão."
+      if (!foiConcluido && !temCargaDigitada) return;
+
+      const exBib = item.exercicio_id
+        ? biblioteca.find((e) => String(e.id) === String(item.exercicio_id))
+        : biblioteca.find((e) => normalizarTexto(e.nome) === normalizarTexto(item.nome));
+
+      const exercicioIdResolvido = item.exercicio_id || exBib?.id || null;
+      const seriesRealizadas =
+        dadosHoje.series !== undefined && String(dadosHoje.series).trim() !== ''
+          ? String(dadosHoje.series).trim()
+          : String(item.series || '');
+      const repsRealizadas =
+        dadosHoje.repeticoes !== undefined && String(dadosHoje.repeticoes).trim() !== ''
+          ? String(dadosHoje.repeticoes).trim()
+          : String(item.repeticoes || '');
+
+      const cargaNumerica = temCargaDigitada ? parseCargaNumerica(dadosHoje.carga_kg) : null;
+
+      itensExerciciosRealizados.push({
+        item_treino_id: item.id || null,
+        exercicio_id: exercicioIdResolvido,
+        exercicio_nome: item.nome || exBib?.nome || 'Exercício',
+        series: seriesRealizadas,
+        repeticoes: repsRealizadas,
+        carga_kg: cargaNumerica, // null = peso corporal / sem carga ("PC")
+        observacao: item.observacao || null,
+      });
+    });
+
+    return { itensExerciciosRealizados, itensTextoFeitos };
+  }
+
+  async function executarRegistrarSessaoHoje({ alunoId, treinoId, dataSessao, observacaoSessao }) {
+    const chave = `${alunoId}:::${treinoId}`;
+    const treinoObj = treinos.find((t) => String(t.id) === String(treinoId));
+    if (!treinoObj) return null;
+
+    const { itensExerciciosRealizados, itensTextoFeitos } = extrairItensRealizadosNaSessao(chave);
+
+    const novaSessao = await registrarSessaoDeAula({
+      alunoId,
+      mesociclo: treinoObj.mesociclos || null,
+      treino: treinoObj,
+      dataSessao,
+      professorId,
+      professorNome,
+      observacao: observacaoSessao || null,
+      itensRealizados: itensExerciciosRealizados,
+      itensTextoFeitos,
+    });
+
+    // Atualiza histórico de sessões do aluno em memória para refletir "última: X kg" imediatamente
+    setSessoesPorAluno((prev) => ({
+      ...prev,
+      [String(alunoId)]: [novaSessao, ...(prev[String(alunoId)] || [])],
+    }));
+
+    return novaSessao;
   }
 
   // --- SALVAR EDIÇÃO NO TREINO VIA RPC TRANSACIONAL salvar_edicao_exposicao (SEÇÃO 9) ---
@@ -880,12 +1144,101 @@ export default function ExposicaoTreino() {
 
   async function confirmarESalvarColuna() {
     if (!confirmacaoSalvarCol) return;
+    const {
+      alunoId,
+      treinoId,
+      dataSessao,
+      observacaoSessao,
+      registrarAulaHoje,
+      temAlteracaoEstrutural,
+      aplicarNoTreinoOriginal,
+    } = confirmacaoSalvarCol;
+
+    if (!registrarAulaHoje && !(temAlteracaoEstrutural && aplicarNoTreinoOriginal)) {
+      return window.alert('Marque pelo menos uma opção para salvar.');
+    }
+
+    const chave = `${alunoId}:::${treinoId}`;
+    const { itensExerciciosRealizados, itensTextoFeitos } = extrairItensRealizadosNaSessao(chave);
+
+    if (
+      registrarAulaHoje &&
+      itensExerciciosRealizados.length === 0 &&
+      itensTextoFeitos.length === 0
+    ) {
+      return window.alert(
+        'Marque pelo menos um exercício como feito (✓) ou digite a carga do dia na área "Hoje" para registrar a aula.'
+      );
+    }
+
     setSalvandoColuna(true);
     try {
-      await executarSalvarNoTreino(confirmacaoSalvarCol);
+      let sessaoSalva = null;
+
+      if (registrarAulaHoje) {
+        sessaoSalva = await executarRegistrarSessaoHoje({
+          alunoId,
+          treinoId,
+          dataSessao,
+          observacaoSessao,
+        });
+      }
+
+      if (temAlteracaoEstrutural && aplicarNoTreinoOriginal) {
+        await executarSalvarNoTreino({ alunoId, treinoId });
+      }
+
+      // Limpa o rascunho somente deste aluno (os outros alunos da aula continuam com seus rascunhos)
+      limparRascunhoStorage(alunoId, treinoId);
+
+      setColunasState((prev) => {
+        const atual = prev[chave];
+        if (!atual) return prev;
+
+        // Se não aplicou no treino original, restaura a prescrição original como base
+        const itensBase =
+          temAlteracaoEstrutural && aplicarNoTreinoOriginal
+            ? atual.itensAtuais
+            : garantirIdsNosItens(atual.itensOriginais);
+
+        const hojeMapReset = {};
+        itensBase.forEach((it) => {
+          if (it.tipo === 'cardio' || it.tipo === 'texto') return;
+          hojeMapReset[it.id_unico] = {
+            carga_kg: '',
+            series: String(it.series || ''),
+            repeticoes: String(it.repeticoes || ''),
+          };
+        });
+
+        return {
+          ...prev,
+          [chave]: {
+            ...atual,
+            modoEdicao: false,
+            itensAtuais: itensBase,
+            duracaoAquecimentoAtual:
+              temAlteracaoEstrutural && aplicarNoTreinoOriginal
+                ? atual.duracaoAquecimentoAtual
+                : atual.duracaoAquecimentoOriginal,
+            concluidosMap: {},
+            hojeMap: hojeMapReset,
+            ultimaSessaoSalvaInfo: sessaoSalva
+              ? {
+                  data: sessaoSalva.data,
+                  semana: sessaoSalva.semana,
+                  qtdItens: itensExerciciosRealizados.length,
+                }
+              : atual.ultimaSessaoSalvaInfo,
+            adicionandoItemTipo: null,
+            trocandoExercicioItemId: null,
+          },
+        };
+      });
+
       setConfirmacaoSalvarCol(null);
     } catch (err) {
-      window.alert('Erro ao salvar alterações no treino: ' + err.message);
+      window.alert('Erro ao salvar: ' + err.message);
     } finally {
       setSalvandoColuna(false);
     }
@@ -915,9 +1268,21 @@ export default function ExposicaoTreino() {
   async function salvarTodosRascunhosESair() {
     setSalvandoColuna(true);
     try {
+      const hojeISO = new Date().toISOString().slice(0, 10);
       for (const chave of chavesComRascunhoPendente) {
         const [alunoId, treinoId] = chave.split(':::');
-        await executarSalvarNoTreino({ alunoId, treinoId });
+        if (colunaTemRegistroHojePendente(chave)) {
+          await executarRegistrarSessaoHoje({
+            alunoId,
+            treinoId,
+            dataSessao: hojeISO,
+            observacaoSessao: '',
+          });
+        }
+        if (colunaTemAlteracoesEstruturais(chave)) {
+          await executarSalvarNoTreino({ alunoId, treinoId });
+        }
+        limparRascunhoStorage(alunoId, treinoId);
       }
       await finalizarSaidaExposicao();
     } catch (err) {
@@ -1557,56 +1922,62 @@ export default function ExposicaoTreino() {
                           ✏️ {auditoriaTexto}
                         </div>
                       )}
+                      {stCol.ultimaSessaoSalvaInfo && !temRascunho && (
+                        <div style={{ fontSize: '11.5px', background: '#dcfce7', color: '#166534', fontWeight: 'bold', padding: '2px 8px', borderRadius: '6px', marginTop: '4px', marginLeft: auditoriaTexto ? '6px' : 0, display: 'inline-block' }}>
+                          ✓ Aula salva (S{stCol.ultimaSessaoSalvaInfo.semana} • {formatarDataCurtaDDMM(stCol.ultimaSessaoSalvaInfo.data)})
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* BOTÕES DE EDIÇÃO / SALVAR / DESCARTAR INDEPENDENTES POR COLUNA (SEÇÃO 9) */}
+                  {/* BOTÕES DE SALVAR / DESCARTAR / EDITAR INDEPENDENTES POR COLUNA (SEÇÕES 2.2 e 9) */}
                   <div
                     style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}
                     onClick={(e) => e.stopPropagation()}
                   >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        abrirModalSalvarColuna({
+                          alunoId: slot.alunoId,
+                          treinoId: slot.treinoId,
+                          alunoNome: alunoObj.nome,
+                          treinoTitulo: treinoObj.titulo || 'Treino',
+                        })
+                      }
+                      style={{
+                        background: temRascunho || modoEdicao ? '#22c55e' : 'rgba(255,255,255,0.22)',
+                        color: '#ffffff',
+                        border: '1px solid #ffffff',
+                        padding: '6px 11px',
+                        borderRadius: '6px',
+                        fontWeight: 'bold',
+                        fontSize: '12.5px',
+                        cursor: 'pointer',
+                      }}
+                      title="Registrar aula de hoje e/ou salvar alterações no treino"
+                    >
+                      💾 Salvar
+                    </button>
+
                     {(modoEdicao || temRascunho) && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setConfirmacaoSalvarCol({
-                              alunoId: slot.alunoId,
-                              treinoId: slot.treinoId,
-                              alunoNome: alunoObj.nome,
-                              treinoTitulo: treinoObj.titulo || 'Treino',
-                            })
-                          }
-                          style={{
-                            background: '#22c55e',
-                            color: '#ffffff',
-                            border: '1px solid #ffffff',
-                            padding: '6px 11px',
-                            borderRadius: '6px',
-                            fontWeight: 'bold',
-                            fontSize: '12.5px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          💾 Salvar no treino
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDescartarAlteracoesColuna(slot.alunoId, slot.treinoId)}
-                          style={{
-                            background: '#ef4444',
-                            color: '#ffffff',
-                            border: '1px solid #ffffff',
-                            padding: '6px 10px',
-                            borderRadius: '6px',
-                            fontWeight: 'bold',
-                            fontSize: '12.5px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          🗑️ Descartar
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        onClick={() => handleDescartarAlteracoesColuna(slot.alunoId, slot.treinoId)}
+                        style={{
+                          background: '#ef4444',
+                          color: '#ffffff',
+                          border: '1px solid #ffffff',
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          fontWeight: 'bold',
+                          fontSize: '12.5px',
+                          cursor: 'pointer',
+                        }}
+                        title="Descartar rascunho e cargas digitadas"
+                      >
+                        🗑️ Descartar
+                      </button>
                     )}
 
                     <button
@@ -1627,7 +1998,7 @@ export default function ExposicaoTreino() {
                         fontSize: '12.5px',
                         cursor: 'pointer',
                       }}
-                      title="Editar treino durante a exposição"
+                      title="Editar estrutura do treino durante a exposição"
                     >
                       ✏️ {modoEdicao ? 'Fechar Edição' : 'Editar'}
                     </button>
@@ -2212,7 +2583,185 @@ export default function ExposicaoTreino() {
                                       )}
                                     </div>
 
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                      {/* ÁREA "HOJE" DISCRETA À DIREITA PARA EXERCÍCIOS (SEÇÃO 2.1) */}
+                                      {/* Blocos de texto (aquecimento livre, cardio) NÃO têm campo de carga, só o ✓ feito */}
+                                      {item.tipo === 'exercicio' && (() => {
+                                        const dadosHoje = stCol.hojeMap?.[item.id_unico] || {
+                                          carga_kg: '',
+                                          series: String(item.series || ''),
+                                          repeticoes: String(item.repeticoes || ''),
+                                        };
+                                        const ultimaCargaInfo = obterUltimaCargaExercicioAluno(
+                                          sessoesPorAluno[String(slot.alunoId)] || [],
+                                          item.exercicio_id || exBib?.id || null,
+                                          item.nome
+                                        );
+                                        const padraoItem = item.padrao || exBib?.padrao || '';
+                                        const isPesoCorporalPadrao =
+                                          padraoItem === 'Calistenia' ||
+                                          padraoItem === 'Mobilidade' ||
+                                          String(item.equipamento || '').toLowerCase().includes('peso corporal') ||
+                                          (!item.carga || item.carga === '-' || String(item.carga).toUpperCase() === 'PC');
+
+                                        const temCargaPreenchida = String(dadosHoje.carga_kg || '').trim() !== '';
+                                        const placeholderCarga =
+                                          ultimaCargaInfo.cargaKg !== null
+                                            ? `última: ${formatarNumeroCarga(ultimaCargaInfo.cargaKg)} kg`
+                                            : isPesoCorporalPadrao
+                                            ? 'PC'
+                                            : 'última: —';
+
+                                        return (
+                                          <div
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              gap: '4px',
+                                              background: temCargaPreenchida ? '#eff6ff' : '#f8fafc',
+                                              border: temCargaPreenchida ? '1px solid #93c5fd' : '1px solid #e2e8f0',
+                                              borderRadius: '8px',
+                                              padding: '5px 8px',
+                                              minWidth: '175px',
+                                            }}
+                                            title="Área Hoje: digite a carga realizada na aula (marca automaticamente como feito ✓)"
+                                          >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                                              <span style={{ fontSize: '10.5px', fontWeight: '700', color: temCargaPreenchida ? '#1e40af' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                                Hoje
+                                              </span>
+                                              {!temCargaPreenchida && (isPesoCorporalPadrao || concluido) && (
+                                                <span
+                                                  style={{
+                                                    fontSize: '10.5px',
+                                                    fontWeight: 'bold',
+                                                    color: '#64748b',
+                                                    background: '#e2e8f0',
+                                                    padding: '1px 6px',
+                                                    borderRadius: '999px',
+                                                  }}
+                                                  title="Peso Corporal (sem carga externa)"
+                                                >
+                                                  PC
+                                                </span>
+                                              )}
+                                              {/* Séries × Repetições realizadas hoje (editáveis, vêm preenchidas com o prescrito) */}
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '11px', color: '#64748b' }}>
+                                                <input
+                                                  type="text"
+                                                  inputMode="numeric"
+                                                  value={dadosHoje.series}
+                                                  onChange={(e) =>
+                                                    atualizarCampoHojeItem(chave, item, 'series', e.target.value)
+                                                  }
+                                                  title="Séries realizadas hoje"
+                                                  style={{
+                                                    width: '26px',
+                                                    padding: '2px 3px',
+                                                    fontSize: '11.5px',
+                                                    textAlign: 'center',
+                                                    border: '1px solid #cbd5e1',
+                                                    borderRadius: '4px',
+                                                    background: '#ffffff',
+                                                    color: '#334155',
+                                                    fontWeight: '600',
+                                                  }}
+                                                />
+                                                <span>×</span>
+                                                <input
+                                                  type="text"
+                                                  value={dadosHoje.repeticoes}
+                                                  onChange={(e) =>
+                                                    atualizarCampoHojeItem(chave, item, 'repeticoes', e.target.value)
+                                                  }
+                                                  title="Repetições ou tempo realizados hoje (ex: 4, 8-10, 30 s, 5/lado)"
+                                                  style={{
+                                                    width: '44px',
+                                                    padding: '2px 4px',
+                                                    fontSize: '11.5px',
+                                                    textAlign: 'center',
+                                                    border: '1px solid #cbd5e1',
+                                                    borderRadius: '4px',
+                                                    background: '#ffffff',
+                                                    color: '#334155',
+                                                    fontWeight: '600',
+                                                  }}
+                                                />
+                                              </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  ajustarCargaRapidaHoje(chave, item, -2.5, ultimaCargaInfo.cargaKg)
+                                                }
+                                                style={{
+                                                  padding: '3px 6px',
+                                                  fontSize: '11px',
+                                                  fontWeight: 'bold',
+                                                  borderRadius: '4px',
+                                                  border: '1px solid #cbd5e1',
+                                                  background: '#ffffff',
+                                                  color: '#475569',
+                                                  cursor: 'pointer',
+                                                }}
+                                                title="Diminuir 2,5 kg"
+                                              >
+                                                −2,5
+                                              </button>
+
+                                              <div style={{ position: 'relative', flex: 1 }}>
+                                                <input
+                                                  type="text"
+                                                  inputMode="decimal"
+                                                  placeholder={placeholderCarga}
+                                                  value={dadosHoje.carga_kg}
+                                                  onChange={(e) =>
+                                                    atualizarCampoHojeItem(chave, item, 'carga_kg', e.target.value)
+                                                  }
+                                                  style={{
+                                                    width: '100%',
+                                                    boxSizing: 'border-box',
+                                                    padding: '4px 6px',
+                                                    fontSize: '12px',
+                                                    borderRadius: '5px',
+                                                    border: temCargaPreenchida
+                                                      ? '1px solid #4460B8'
+                                                      : '1px solid #cbd5e1',
+                                                    background: '#ffffff',
+                                                    color: temCargaPreenchida ? '#0f172a' : '#94a3b8',
+                                                    fontWeight: temCargaPreenchida ? '800' : '500',
+                                                    textAlign: 'center',
+                                                  }}
+                                                />
+                                              </div>
+
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  ajustarCargaRapidaHoje(chave, item, 2.5, ultimaCargaInfo.cargaKg)
+                                                }
+                                                style={{
+                                                  padding: '3px 6px',
+                                                  fontSize: '11px',
+                                                  fontWeight: 'bold',
+                                                  borderRadius: '4px',
+                                                  border: '1px solid #cbd5e1',
+                                                  background: '#ffffff',
+                                                  color: '#4460B8',
+                                                  cursor: 'pointer',
+                                                }}
+                                                title="Aumentar 2,5 kg"
+                                              >
+                                                +2,5
+                                              </button>
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
+
                                       {urlMidia && (
                                         <button
                                           type="button"
@@ -2240,9 +2789,14 @@ export default function ExposicaoTreino() {
                                       )}
 
                                       <div
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleExercicioConcluido(chave, item.id_unico);
+                                        }}
+                                        title="Marcar ou desmarcar como feito"
                                         style={{
-                                          width: '28px',
-                                          height: '28px',
+                                          width: '30px',
+                                          height: '30px',
                                           borderRadius: '50%',
                                           border: concluido ? '2px solid #22c55e' : '2px solid #cbd5e1',
                                           background: concluido ? '#22c55e' : '#ffffff',
@@ -2253,6 +2807,7 @@ export default function ExposicaoTreino() {
                                           fontWeight: 'bold',
                                           fontSize: '15px',
                                           flexShrink: 0,
+                                          cursor: 'pointer',
                                         }}
                                       >
                                         {concluido ? '✓' : ''}
@@ -2508,49 +3063,244 @@ export default function ExposicaoTreino() {
         })}
       </div>
 
-      {/* MODAL DE CONFIRMAÇÃO AO SALVAR EDIÇÃO NO TREINO DE UM ALUNO (SEÇÃO 9) */}
-      {confirmacaoSalvarCol && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 10050,
-            padding: '20px',
-          }}
-        >
-          <div style={{ background: '#ffffff', borderRadius: '12px', maxWidth: '450px', width: '100%', padding: '24px', borderTop: '5px solid #22c55e' }}>
-            <h3 style={{ marginTop: 0, color: '#0f172a' }}>💾 Confirmar Salvamento</h3>
-            <p style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e293b' }}>
-              Salvar alterações no {confirmacaoSalvarCol.treinoTitulo} do {confirmacaoSalvarCol.alunoNome}?
-            </p>
-            <p style={{ fontSize: '13px', color: '#64748b' }}>
-              A versão anterior será salva automaticamente no histórico de auditoria (<code>treinos_historico</code>) e o treino será atualizado com a data da aula e seu nome.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-              <button
-                type="button"
-                disabled={salvandoColuna}
-                onClick={() => setConfirmacaoSalvarCol(null)}
-                style={{ padding: '9px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
+      {/* MODAL DE CONFIRMAÇÃO AO SALVAR (SEÇÃO 2.2: REGISTRAR AULA DE HOJE E/OU APLICAR NO TREINO ORIGINAL) */}
+      {confirmacaoSalvarCol && (() => {
+        const chaveModal = `${confirmacaoSalvarCol.alunoId}:::${confirmacaoSalvarCol.treinoId}`;
+        const treinoModalObj = treinos.find((t) => String(t.id) === String(confirmacaoSalvarCol.treinoId));
+        const mesoModalObj = treinoModalObj?.mesociclos || null;
+        const { itensExerciciosRealizados, itensTextoFeitos } = extrairItensRealizadosNaSessao(chaveModal);
+        const infoSemana = verificarSessaoForaDoPeriodo(confirmacaoSalvarCol.dataSessao, mesoModalObj);
+
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.65)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 10050,
+              padding: '20px',
+            }}
+          >
+            <div style={{ background: '#ffffff', borderRadius: '12px', maxWidth: '520px', width: '100%', padding: '24px', borderTop: '5px solid #22c55e', maxHeight: '90vh', overflowY: 'auto' }}>
+              <h3 style={{ marginTop: 0, color: '#0f172a' }}>
+                💾 Salvar — {confirmacaoSalvarCol.alunoNome} ({confirmacaoSalvarCol.treinoTitulo})
+              </h3>
+
+              {/* OPÇÃO 1: REGISTRAR A AULA DE HOJE (VEM MARCADO) */}
+              <div
+                style={{
+                  background: confirmacaoSalvarCol.registrarAulaHoje ? '#f0fdf4' : '#f8fafc',
+                  border: confirmacaoSalvarCol.registrarAulaHoje ? '2px solid #22c55e' : '1px solid #cbd5e1',
+                  borderRadius: '10px',
+                  padding: '14px',
+                  marginBottom: '14px',
+                }}
               >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={salvandoColuna}
-                onClick={confirmarESalvarColuna}
-                style={{ padding: '9px 16px', borderRadius: '6px', border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
-              >
-                {salvandoColuna ? 'Salvando...' : 'Sim, Salvar no Treino'}
-              </button>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(confirmacaoSalvarCol.registrarAulaHoje)}
+                    onChange={(e) =>
+                      setConfirmacaoSalvarCol((prev) => ({
+                        ...prev,
+                        registrarAulaHoje: e.target.checked,
+                      }))
+                    }
+                    style={{ width: '18px', height: '18px', marginTop: '2px' }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ fontSize: '15px', color: '#0f172a', display: 'block' }}>
+                      Registrar a aula de hoje
+                    </strong>
+                    <span style={{ fontSize: '12.5px', color: '#475569' }}>
+                      Grava a sessão com as cargas, séries e repetições feitas hoje. Exercícios não marcados não são gravados.
+                    </span>
+                  </div>
+                </label>
+
+                {confirmacaoSalvarCol.registrarAulaHoje && (
+                  <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #bbf7d0' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#166534', marginBottom: '4px' }}>
+                          Data da aula (editável):
+                        </label>
+                        <input
+                          type="date"
+                          value={confirmacaoSalvarCol.dataSessao}
+                          onChange={(e) =>
+                            setConfirmacaoSalvarCol((prev) => ({
+                              ...prev,
+                              dataSessao: e.target.value,
+                            }))
+                          }
+                          style={{
+                            width: '100%',
+                            padding: '7px 9px',
+                            borderRadius: '6px',
+                            border: '1px solid #86efac',
+                            fontSize: '13.5px',
+                            fontWeight: 'bold',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#166534', marginBottom: '4px' }}>
+                          Semana no mesociclo:
+                        </div>
+                        <div
+                          style={{
+                            padding: '7px 10px',
+                            borderRadius: '6px',
+                            background: infoSemana.foraDoPeriodo ? '#fff7ed' : '#dcfce7',
+                            color: infoSemana.foraDoPeriodo ? '#9a3412' : '#166534',
+                            border: infoSemana.foraDoPeriodo ? '1px solid #fdba74' : '1px solid #86efac',
+                            fontWeight: 'bold',
+                            fontSize: '13px',
+                          }}
+                        >
+                          Semana {infoSemana.semanaCalculada}
+                          {infoSemana.totalSemanas ? ` de ${infoSemana.totalSemanas}` : ''}
+                        </div>
+                      </div>
+                    </div>
+
+                    {infoSemana.foraDoPeriodo && (
+                      <div
+                        style={{
+                          background: '#fff7ed',
+                          border: '1px solid #fdba74',
+                          color: '#9a3412',
+                          padding: '8px 10px',
+                          borderRadius: '6px',
+                          fontSize: '12.5px',
+                          fontWeight: 'bold',
+                          marginBottom: '10px',
+                        }}
+                      >
+                        ⚠️ {infoSemana.mensagem} (será gravada na Semana {infoSemana.semanaCalculada} mesmo assim).
+                      </div>
+                    )}
+
+                    {/* Resumo dos exercícios que entrarão na sessão */}
+                    <div style={{ fontSize: '12.5px', color: '#1e293b', background: '#ffffff', padding: '8px 10px', borderRadius: '6px', border: '1px solid #dcfce7', marginBottom: '8px' }}>
+                      <strong>
+                        Exercícios feitos a gravar na sessão ({itensExerciciosRealizados.length}):
+                      </strong>
+                      {itensExerciciosRealizados.length === 0 ? (
+                        <div style={{ color: '#b45309', marginTop: '4px' }}>
+                          ⚠️ Nenhum exercício marcado como feito (✓) ou com carga digitada ainda.
+                        </div>
+                      ) : (
+                        <ul style={{ margin: '6px 0 0', paddingLeft: '18px', maxHeight: '120px', overflowY: 'auto' }}>
+                          {itensExerciciosRealizados.map((it, idx) => (
+                            <li key={idx} style={{ marginBottom: '2px' }}>
+                              <strong>{it.exercicio_nome}</strong>: {it.series}×{it.repeticoes} ·{' '}
+                              <span style={{ color: '#1e40af', fontWeight: 'bold' }}>
+                                {it.carga_kg !== null && it.carga_kg > 0
+                                  ? `${formatarNumeroCarga(it.carga_kg)} kg`
+                                  : 'PC'}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {itensTextoFeitos.length > 0 && (
+                        <div style={{ marginTop: '4px', fontSize: '11.5px', color: '#475569' }}>
+                          + {itensTextoFeitos.length} bloco(s) de aquecimento/cardio marcado(s) como ✓ feito.
+                        </div>
+                      )}
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder="Observação da aula de hoje (opcional)..."
+                      value={confirmacaoSalvarCol.observacaoSessao || ''}
+                      onChange={(e) =>
+                        setConfirmacaoSalvarCol((prev) => ({
+                          ...prev,
+                          observacaoSessao: e.target.value,
+                        }))
+                      }
+                      style={{
+                        width: '100%',
+                        padding: '7px 9px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '12.5px',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* OPÇÃO 2: APLICAR AS MUDANÇAS NO TREINO ORIGINAL (SÓ APARECE SE A ESTRUTURA FOI EDITADA) */}
+              {confirmacaoSalvarCol.temAlteracaoEstrutural && (
+                <div
+                  style={{
+                    background: confirmacaoSalvarCol.aplicarNoTreinoOriginal ? '#eff6ff' : '#f8fafc',
+                    border: confirmacaoSalvarCol.aplicarNoTreinoOriginal ? '2px solid #4460B8' : '1px solid #cbd5e1',
+                    borderRadius: '10px',
+                    padding: '14px',
+                    marginBottom: '14px',
+                  }}
+                >
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(confirmacaoSalvarCol.aplicarNoTreinoOriginal)}
+                      onChange={(e) =>
+                        setConfirmacaoSalvarCol((prev) => ({
+                          ...prev,
+                          aplicarNoTreinoOriginal: e.target.checked,
+                        }))
+                      }
+                      style={{ width: '18px', height: '18px', marginTop: '2px' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ fontSize: '15px', color: '#0f172a', display: 'block' }}>
+                        Aplicar as mudanças no treino original
+                      </strong>
+                      <span style={{ fontSize: '12.5px', color: '#475569' }}>
+                        Atualiza a prescrição do {confirmacaoSalvarCol.treinoTitulo} e guarda a versão anterior em <code>treinos_historico</code>.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px' }}>
+                💡 Digitar a carga do dia na área &quot;Hoje&quot; não muda a carga prescrita no treino original.
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  type="button"
+                  disabled={salvandoColuna}
+                  onClick={() => setConfirmacaoSalvarCol(null)}
+                  style={{ padding: '9px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={salvandoColuna}
+                  onClick={confirmarESalvarColuna}
+                  style={{ padding: '9px 18px', borderRadius: '6px', border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  {salvandoColuna ? 'Salvando...' : 'Confirmar e Salvar'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* DIÁLOGO AO TENTAR SAIR COM RASCUNHOS NÃO SALVOS (SEÇÃO 9) */}
       {modalSaidaRascunhos && (

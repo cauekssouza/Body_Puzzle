@@ -4,16 +4,22 @@ import html2canvas from 'html2canvas';
 import { calcularCarta } from '../utils/cartaTrunfo';
 import { abrirLaudoPDF } from '../utils/gerarLaudoPDF';
 import {
+  normalizarTexto,
   normalizarBloco,
   ordenarItensTreinoPorBloco,
   extrairDuracaoAquecimento,
   formatarAuditoriaAula,
+  carregarSessoesDoAluno,
+  calcularDadosProgressaoExercicio,
 } from '../utils/prescricaoUtils';
 
 export default function MeuTreino() {
   const [alunoId, setAlunoId] = useState(null);
   const [alunoNome, setAlunoNome] = useState('');
   const [treinos, setTreinos] = useState([]);
+  const [sessoes, setSessoes] = useState([]);
+  const [exerciciosBib, setExerciciosBib] = useState([]);
+  const [exProgId, setExProgId] = useState('');
   const [avaliacaoAtual, setAvaliacaoAtual] = useState(null);
   const [avaliacaoAnterior, setAvaliacaoAnterior] = useState(null);
   const [cartaCalculada, setCartaCalculada] = useState(null);
@@ -46,15 +52,31 @@ export default function MeuTreino() {
   }, []);
 
   async function buscarTreinosEAvaliacao(id) {
-    const { data: treinosData } = await supabase
-      .from('treinos')
-      .select('*, mesociclos(nome, excluido_em)')
-      .eq('aluno_id', id)
-      .order('criado_em', { ascending: false });
+    const [resTreinos, resEx, listaSessoes] = await Promise.all([
+      supabase
+        .from('treinos')
+        .select('*, mesociclos(id, nome, data_inicio, excluido_em)')
+        .eq('aluno_id', id)
+        .order('criado_em', { ascending: false }),
+      supabase.from('exercicios').select('id, nome, padrao'),
+      carregarSessoesDoAluno(id),
+    ]);
 
+    const treinosData = resTreinos.data;
     if (treinosData) {
-      // Filtra itens não excluídos (Seção 3.1)
       setTreinos(treinosData.filter((t) => !t.excluido_em && !t.mesociclos?.excluido_em));
+    }
+    setExerciciosBib(resEx.data || []);
+
+    const sessAtivas = (listaSessoes || []).filter((s) => !s.excluido_em);
+    setSessoes(sessAtivas);
+    if (sessAtivas.length > 0 && sessAtivas[0].sessao_itens?.length > 0) {
+      const primeiroIt = sessAtivas[0].sessao_itens[0];
+      setExProgId(
+        primeiroIt.exercicio_id
+          ? `id:${primeiroIt.exercicio_id}`
+          : `nome:${normalizarTexto(primeiroIt.exercicio_nome)}`
+      );
     }
 
     const { data: avaliacoesData } = await supabase
@@ -281,6 +303,91 @@ export default function MeuTreino() {
       ) : (
         <p style={{ color: '#64748b' }}>Ainda não tens treinos prescritos.</p>
       )}
+
+      {/* PROGRESSÃO DE CARGA DO ALUNO LOGADO (SEÇÃO 3 e 4) */}
+      {sessoes.length > 0 && (() => {
+        const mapaEx = new Map();
+        sessoes.forEach((s) => {
+          (s.sessao_itens || []).forEach((it) => {
+            const exBib = exerciciosBib.find((e) => String(e.id) === String(it.exercicio_id));
+            const nomeEx = exBib?.nome || it.exercicio_nome || 'Exercício';
+            const chave = it.exercicio_id ? `id:${it.exercicio_id}` : `nome:${normalizarTexto(nomeEx)}`;
+            if (!mapaEx.has(chave)) {
+              mapaEx.set(chave, {
+                chave,
+                exercicio_id: it.exercicio_id || exBib?.id || null,
+                nome: nomeEx,
+                padrao: exBib?.padrao || 'Exercício',
+              });
+            }
+          });
+        });
+        const listaExFeitos = Array.from(mapaEx.values());
+        const exAtivo = listaExFeitos.find((e) => e.chave === exProgId) || listaExFeitos[0] || null;
+        const dadosProg = exAtivo
+          ? calcularDadosProgressaoExercicio({
+              sessoesDoAluno: sessoes,
+              exercicioId: exAtivo.exercicio_id,
+              exercicioNome: exAtivo.nome,
+            })
+          : null;
+
+        return (
+          <div style={{ marginTop: '36px' }}>
+            <h3 style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
+              📈 A Tua Progressão de Carga
+            </h3>
+            <div style={{ background: '#f8fafc', padding: '18px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '4px' }}>
+                  Escolhe o exercício:
+                </label>
+                <select
+                  value={exAtivo?.chave || ''}
+                  onChange={(e) => setExProgId(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}
+                >
+                  {listaExFeitos.map((ex) => (
+                    <option key={ex.chave} value={ex.chave}>
+                      {ex.nome} ({ex.padrao})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {dadosProg && dadosProg.tabelaSessoes.length > 0 && (
+                <>
+                  <div style={{ background: '#eff6ff', borderLeft: '5px solid #4460B8', padding: '10px 14px', borderRadius: '8px', fontWeight: '800', color: '#0f172a', marginBottom: '12px' }}>
+                    {dadosProg.destaques.resumoTexto}
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', background: '#fff' }}>
+                    <thead>
+                      <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                        <th style={{ textAlign: 'left', padding: '8px' }}>Data</th>
+                        <th style={{ textAlign: 'center', padding: '8px' }}>Semana</th>
+                        <th style={{ textAlign: 'center', padding: '8px' }}>Séries × Reps</th>
+                        <th style={{ textAlign: 'center', padding: '8px' }}>Carga</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dadosProg.tabelaSessoes.map((r) => (
+                        <tr key={r.sessaoId} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '8px' }}>{r.dataBR}</td>
+                          <td style={{ padding: '8px', textAlign: 'center' }}>{r.semana}</td>
+                          <td style={{ padding: '8px', textAlign: 'center' }}>{r.seriesXReps}</td>
+                          <td style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', color: '#1e40af' }}>
+                            {r.cargaFormatada}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <h3 style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', marginTop: '40px' }}>🏆 A Tua Carta Trunfo</h3>
       {notas ? (
